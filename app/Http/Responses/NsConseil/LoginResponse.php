@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Responses\NsConseil;
 
 use Filament\Http\Responses\Auth\Contracts\LoginResponse as LoginResponseContract;
@@ -11,11 +12,12 @@ class LoginResponse implements LoginResponseContract
         $user = auth()->user();
 
         $url = match (true) {
-            $user->hasRole('commercial')      => '/ns-conseil/partenaires',
+            $user->hasRole('commercial') => '/ns-conseil/partenaires',
             $user->hasRole('teleprospecteur') => '/ns-conseil/prospects',
-            default                           => '/ns-conseil',
+            default => '/ns-conseil',
         };
 
-        return redirect($url);
+        // En mode SPA Livewire, il faut forcer une vraie réponse HTTP
+        return new \Illuminate\Http\RedirectResponse($url);
     }
 }

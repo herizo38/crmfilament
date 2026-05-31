@@ -12,6 +12,17 @@ class Partenaire extends Model
 {
     use HasFactory, SoftDeletes;
 
+    // ✅ Ajouter cette constante
+    public const STATUTS = [
+        'a_prospecter' => 'À prospecter',
+        'en_cours_prospection' => 'En cours de prospection',
+        'rdv_en_cours' => 'RDV en cours',
+        'signe_accord_cadre' => 'Signé accord cadre',
+        'convention_engagement' => 'Convention d\'engagement',
+        'refus' => 'Refus',
+        'inactif' => 'Inactif',
+    ];
+
     protected $fillable = [
         'nom',
         'siret',
@@ -34,7 +45,6 @@ class Partenaire extends Model
         'origine_contact',
         'parrain_marraine',
         'nombre_ventes_liees',
-        // Syndicat
         'syndicat_appartenance',
         'syndicat_nom_organisation',
         'syndicat_responsable_nom',
@@ -46,13 +56,11 @@ class Partenaire extends Model
         'syndicat_email_perso',
         'syndicat_perimetre',
         'syndicat_notes',
-        // Dirigeant
         'dirigeant_nom',
         'dirigeant_prenom',
         'dirigeant_fonction',
         'dirigeant_telephone',
         'dirigeant_email',
-        // CSE
         'cse_secretaire_nom',
         'cse_secretaire_prenom',
         'cse_secretaire_tel_direct',
@@ -70,6 +78,10 @@ class Partenaire extends Model
         'cse_existence_juridique',
         'cse_notes',
         'notes',
+        // Champs import
+        'commentaire_import',
+        'date_evaluation',
+        'statut_prospection',
     ];
 
     protected $casts = [
@@ -83,6 +95,7 @@ class Partenaire extends Model
         'chiffre_affaires' => 'decimal:2',
         'nombre_ventes_liees' => 'integer',
         'cse_nb_elus' => 'integer',
+        'date_evaluation' => 'date',
     ];
 
     // ── Accesseurs ──────────────────────────────────────────────────
@@ -136,7 +149,7 @@ class Partenaire extends Model
             OrganizationStatus::EnCoursProspection,
         ])->where(function ($q) use ($joursSansContact) {
             $q->whereNull('date_modification_statut')
-              ->orWhere('date_modification_statut', '<=', now()->subDays($joursSansContact));
+                ->orWhere('date_modification_statut', '<=', now()->subDays($joursSansContact));
         });
     }
 
@@ -217,7 +230,6 @@ class Partenaire extends Model
             if ($partenaire->isDirty('statut')) {
                 $partenaire->date_modification_statut = now();
 
-                // Si passage en convention, mettre la date
                 if ($partenaire->statut === OrganizationStatus::ConventionEngagement) {
                     $partenaire->date_convention = now();
                 }

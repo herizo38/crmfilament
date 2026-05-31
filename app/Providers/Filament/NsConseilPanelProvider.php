@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\NsConseil\Pages\AircallDashboard;
 use App\Http\Responses\NsConseil\LoginResponse;
 use App\Filament\NsConseil\Pages\Dashboard;
 use Filament\Http\Middleware\Authenticate;
@@ -43,9 +44,9 @@ class NsConseilPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
                 'success' => Color::Emerald,
                 'warning' => Color::Amber,
-                'danger'  => Color::Rose,
-                'info'    => Color::Sky,
-                'gray'    => Color::Slate,
+                'danger' => Color::Rose,
+                'info' => Color::Sky,
+                'gray' => Color::Slate,
             ])
             ->navigationGroups([
                 NavigationGroup::make('Pipeline')
@@ -72,7 +73,10 @@ class NsConseilPanelProvider extends PanelProvider
                 in: app_path('Filament/NsConseil/Widgets'),
                 for: 'App\\Filament\\NsConseil\\Widgets'
             )
-            ->pages([Dashboard::class])
+            ->pages([
+                Dashboard::class,
+                AircallDashboard::class,
+            ])
             ->widgets([])
             ->middleware([
                 EncryptCookies::class,

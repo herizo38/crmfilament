@@ -18,6 +18,7 @@ class Appel extends Model
         'duree_secondes' => 'integer',
     ];
 
+    // app/Models/Appel.php
     protected $fillable = [
         'appelable_type',
         'appelable_id',
@@ -29,6 +30,14 @@ class Appel extends Model
         'commentaire',
         'enregistrement_audio',
         'aircall_call_id',
+        'aircall_user_id',
+        'aircall_number_id',
+        'direction',
+        'numero_appelant',
+        'aircall_user_id',
+        'aircall_email',
+        'aircall_agent_nom'
+
     ];
 
     // ── Accesseurs ──────────────────────────────────────────────────
@@ -238,7 +247,7 @@ class Appel extends Model
     public function scopeDuMois($query): Builder
     {
         return $query->whereMonth('date_heure', now()->month)
-                     ->whereYear('date_heure', now()->year);
+            ->whereYear('date_heure', now()->year);
     }
 
     public function scopeAVenir($query): Builder
@@ -274,7 +283,7 @@ class Appel extends Model
     public function scopeForEntity($query, Model $entity): Builder
     {
         return $query->where('appelable_type', get_class($entity))
-                     ->where('appelable_id', $entity->id);
+            ->where('appelable_id', $entity->id);
     }
 
     // ── Méthodes statiques KPIs ─────────────────────────────────────
@@ -328,7 +337,8 @@ class Appel extends Model
         }
 
         $total = $query->count();
-        if ($total === 0) return 0;
+        if ($total === 0)
+            return 0;
 
         $realises = (clone $query)->realises()->count();
         return round(($realises / $total) * 100, 1);
