@@ -16,7 +16,7 @@ class AlloproUsersSeeder extends Seeder
                 'nom'        => 'DUPONT',
                 'prenom'     => 'Sophie',
                 'email'      => 's.dupont@allopro.fr',
-                'role'       => 'responsable_plateau', // ✅ Existe
+                'role'       => 'responsable_plateau',
                 'description' => 'Responsable du plateau AlloPro 24/24',
             ],
 
@@ -25,28 +25,28 @@ class AlloproUsersSeeder extends Seeder
                 'nom'        => 'LEFEBVRE',
                 'prenom'     => 'Marc',
                 'email'      => 'm.lefebvre@allopro.fr',
-                'role'       => 'operateur_n1', // ✅ Existe
+                'role'       => 'operateur_n1',
                 'description' => 'Opérateur N1 - Gestion des appels entrants',
             ],
             [
                 'nom'        => 'NGUYEN',
                 'prenom'     => 'Linh',
                 'email'      => 'l.nguyen@allopro.fr',
-                'role'       => 'operateur_n1', // ✅ Existe
+                'role'       => 'operateur_n1',
                 'description' => 'Opérateur N1 - Gestion des appels entrants',
             ],
             [
                 'nom'        => 'PETIT',
                 'prenom'     => 'Thomas',
                 'email'      => 't.petit@allopro.fr',
-                'role'       => 'operateur_n1', // ✅ Existe
+                'role'       => 'operateur_n1',
                 'description' => 'Opérateur N1 - Gestion des appels entrants',
             ],
             [
                 'nom'        => 'ROUX',
                 'prenom'     => 'Camille',
                 'email'      => 'c.roux@allopro.fr',
-                'role'       => 'operateur_n1', // ✅ Existe
+                'role'       => 'operateur_n1',
                 'description' => 'Opérateur N1 - Gestion des appels entrants',
             ],
 
@@ -55,14 +55,14 @@ class AlloproUsersSeeder extends Seeder
                 'nom'        => 'BERNARD',
                 'prenom'     => 'Claire',
                 'email'      => 'c.bernard@allopro.fr',
-                'role'       => 'back_office', // ✅ Existe
+                'role'       => 'back_office',
                 'description' => 'Back Office - Traitement des dossiers',
             ],
             [
                 'nom'        => 'RICHARD',
                 'prenom'     => 'Nicolas',
                 'email'      => 'n.richard@allopro.fr',
-                'role'       => 'back_office', // ✅ Existe
+                'role'       => 'back_office',
                 'description' => 'Back Office - Gestion administrative',
             ],
 
@@ -71,20 +71,19 @@ class AlloproUsersSeeder extends Seeder
                 'nom'        => 'DUBOIS',
                 'prenom'     => 'Isabelle',
                 'email'      => 'i.dubois@allopro.fr',
-                'role'       => 'responsable_plateau', // ✅ Utilise le rôle existant
+                'role'       => 'responsable_plateau',
                 'description' => 'Superviseur - Contrôle qualité',
             ],
             [
                 'nom'        => 'MORIN',
                 'prenom'     => 'Philippe',
                 'email'      => 'p.morin@allopro.fr',
-                'role'       => 'responsable_plateau', // ✅ Utilise le rôle existant
+                'role'       => 'responsable_plateau',
                 'description' => 'Superviseur - Animation d\'équipe',
             ],
         ];
 
         foreach ($users as $u) {
-            // Vérifier si l'utilisateur existe déjà
             $user = User::firstOrCreate(
                 ['email' => $u['email']],
                 [

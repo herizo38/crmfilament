@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\CorpsDeMetier;
 use App\Enums\StatutCompteArtisan;
 use App\Enums\CanalAlerte;
+use App\Enums\ModeAgendaArtisan;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -24,6 +25,9 @@ class Artisan extends Model
         'email',
         'canal_alerte',
         'statut_compte',
+        'formule_souscrite',     // NOUVEAU
+        'mode_agenda',           // NOUVEAU
+        'plages_disponibilite',  // NOUVEAU (JSON — requis si Mode A)
         'date_souscription',
         'date_activation',
         'agenda_disponibilites',
@@ -33,14 +37,16 @@ class Artisan extends Model
     ];
 
     protected $casts = [
-        'corps_de_metier'      => CorpsDeMetier::class,
-        'statut_compte'        => StatutCompteArtisan::class,
-        'canal_alerte'         => CanalAlerte::class,
-        'date_souscription'    => 'date',
-        'date_activation'      => 'date',
-        'agenda_disponibilites'=> 'boolean',
-        'note_moyenne'         => 'decimal:2',
-        'nb_interventions'     => 'integer',
+        'corps_de_metier'        => CorpsDeMetier::class,
+        'statut_compte'          => StatutCompteArtisan::class,
+        'canal_alerte'           => 'array',              // MODIFIÉ : devient JSON array multi-valeurs
+        'mode_agenda'            => ModeAgendaArtisan::class,  // NOUVEAU
+        'plages_disponibilite'   => 'array',              // NOUVEAU
+        'date_souscription'      => 'date',
+        'date_activation'        => 'date',
+        'agenda_disponibilites'  => 'boolean',
+        'note_moyenne'           => 'decimal:2',
+        'nb_interventions'       => 'integer',
     ];
 
     // ── Accesseurs ──────────────────────────────────────────────────
@@ -148,6 +154,23 @@ class Artisan extends Model
         return $this->estActif() && $this->agenda_disponibilites;
     }
 
+    // NOUVELLES MÉTHODES POUR LE MODE AGENDA
+    public function estModeAStructure(): bool
+    {
+        return $this->mode_agenda === ModeAgendaArtisan::ModeA;
+    }
+
+    public function estModeBRappel(): bool
+    {
+        return $this->mode_agenda === ModeAgendaArtisan::ModeB;
+    }
+
+    // NOUVELLE MÉTHODE POUR LA FACTURATION
+    public function peutEtreFacture(): bool
+    {
+        return !empty($this->siret) && strlen($this->siret) === 14;
+    }
+
     public function activer(): void
     {
         $this->update([
@@ -213,7 +236,10 @@ class Artisan extends Model
                 $artisan->date_souscription = now();
             }
             if (!$artisan->canal_alerte) {
-                $artisan->canal_alerte = CanalAlerte::LesDeux;
+                $artisan->canal_alerte = [CanalAlerte::LesDeux->value]; // MODIFIÉ : array multi-valeurs
+            }
+            if (!$artisan->mode_agenda) {
+                $artisan->mode_agenda = ModeAgendaArtisan::ModeA; // Valeur par défaut
             }
         });
 
@@ -264,5 +290,21 @@ class Artisan extends Model
     public function documents()
     {
         return $this->morphMany(Document::class, 'documentable');
+    }
+
+    // NOUVELLES RELATIONS
+    public function devis()
+    {
+        return $this->hasMany(Devis::class);
+    }
+
+    public function bonsDeCommande()
+    {
+        return $this->hasMany(BonDeCommande::class);
+    }
+
+    public function factures()
+    {
+        return $this->hasMany(Facture::class);
     }
 }

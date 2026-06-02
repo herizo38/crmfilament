@@ -30,6 +30,7 @@ class Ticket extends Model
         'rdv_planifie_at',
         'rappel_promise_at',
         'aircall_call_id',
+        'source_appel',        // NOUVEAU : Via CTI / téléphonie
         'notes',
     ];
 
@@ -211,6 +212,11 @@ class Ticket extends Model
         return $query->whereBetween('date_creation', [now()->startOfWeek(), now()->endOfWeek()]);
     }
 
+    public function scopeParSourceAppel($query, string $source): Builder
+    {
+        return $query->where('source_appel', $source);
+    }
+
     // ── Méthodes métier ─────────────────────────────────────────────
 
     public function estActif(): bool
@@ -320,6 +326,32 @@ class Ticket extends Model
         $depassement = $this->date_creation->addMinutes($delaiMax);
 
         return $depassement->diffForHumans();
+    }
+
+    /**
+     * Vérifie si l'intervention a été réalisée (statut InterventionRealisee)
+     */
+    public function estInterventionRealisee(): bool
+    {
+        return $this->statut === TicketStatut::InterventionRealisee;
+    }
+
+    /**
+     * Passe le ticket en statut "Intervention réalisée"
+     * (statut intermédiaire entre ArtisanConfirme et ClotureSatisfait)
+     */
+    public function validerInterventionRealisee(): void
+    {
+        if ($this->statut === TicketStatut::ArtisanConfirme) {
+            $this->changerStatut(
+                TicketStatut::InterventionRealisee,
+                'Intervention réalisée par l\'artisan'
+            );
+        } else {
+            throw new \Exception(
+                "Impossible de passer au statut InterventionRealisee depuis le statut {$this->statut?->value}"
+            );
+        }
     }
 
     // ── Méthodes statiques calculées côté SQL ────────────────────────
@@ -440,5 +472,47 @@ class Ticket extends Model
     {
         return $this->hasOne(ReclamationP8::class)
             ->whereIn('statut', ['ouverte', 'en_traitement']);
+    }
+
+    // ── NOUVELLES RELATIONS (Devis, Bons de commande, Factures) ──────
+
+    /**
+     * Relation avec les devis (un ticket peut avoir plusieurs devis)
+     */
+    public function devis(): HasMany
+    {
+        return $this->hasMany(Devis::class);
+    }
+
+    /**
+     * Relation avec le bon de commande principal (le plus récent)
+     */
+    public function bonDeCommande(): HasOne
+    {
+        return $this->hasOne(BonDeCommande::class)->latestOfMany();
+    }
+
+    /**
+     * Relation avec tous les bons de commande
+     */
+    public function bonsDeCommande(): HasMany
+    {
+        return $this->hasMany(BonDeCommande::class);
+    }
+
+    /**
+     * Relation avec la facture principale (la plus récente)
+     */
+    public function facture(): HasOne
+    {
+        return $this->hasOne(Facture::class)->latestOfMany();
+    }
+
+    /**
+     * Relation avec toutes les factures
+     */
+    public function factures(): HasMany
+    {
+        return $this->hasMany(Facture::class);
     }
 }

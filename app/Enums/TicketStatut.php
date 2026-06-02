@@ -16,7 +16,14 @@ enum TicketStatut: string implements HasLabel, HasColor, HasIcon
     case RappelPromis                 = 'rappel_promis';
     case EnAttenteConfirmationArtisan = 'en_attente_confirmation_artisan';
     case ArtisanConfirme              = 'artisan_confirme';
-    case InterventionRealisee         = 'intervention_realisee';
+
+    // NOUVEAUX STATUTS POUR LA CHAÎNE DOCUMENTAIRE
+    case DevisEnAttente               = 'devis_en_attente';      // Devis émis, en attente réponse client
+    case DevisAccepte                 = 'devis_accepte';         // Devis accepté, BC généré
+    case InterventionRealisee         = 'intervention_realisee'; // Artisan a clôturé le BC
+    case FactureEmise                 = 'facture_emise';         // Facture générée, en attente paiement
+    case PaiementRecu                 = 'paiement_recu';         // Facture réglée (avant appel NPS J+1)
+
     case ClotureSatisfait             = 'cloture_satisfait';
     case SuiviQualiteRequis           = 'suivi_qualite_requis';
     case ReclamationOuverte           = 'reclamation_ouverte';
@@ -24,6 +31,7 @@ enum TicketStatut: string implements HasLabel, HasColor, HasIcon
     case DossierCloture               = 'dossier_cloture';
 
     public function getLabel(): ?string { return $this->label(); }
+
     public function label(): string
     {
         return match($this) {
@@ -35,7 +43,14 @@ enum TicketStatut: string implements HasLabel, HasColor, HasIcon
             self::RappelPromis                 => 'Rappel promis',
             self::EnAttenteConfirmationArtisan => 'En attente confirmation artisan',
             self::ArtisanConfirme              => 'Artisan confirmé',
+
+            // NOUVEAUX LABELS
+            self::DevisEnAttente               => 'Devis en attente',
+            self::DevisAccepte                 => 'Devis accepté',
             self::InterventionRealisee         => 'Intervention réalisée',
+            self::FactureEmise                 => 'Facture émise',
+            self::PaiementRecu                 => 'Paiement reçu',
+
             self::ClotureSatisfait             => 'Clôture satisfait',
             self::SuiviQualiteRequis           => 'Suivi qualité requis',
             self::ReclamationOuverte           => 'Réclamation ouverte',
@@ -45,6 +60,7 @@ enum TicketStatut: string implements HasLabel, HasColor, HasIcon
     }
 
     public function getColor(): string|array|null { return $this->color(); }
+
     public function color(): string
     {
         return match($this) {
@@ -56,7 +72,14 @@ enum TicketStatut: string implements HasLabel, HasColor, HasIcon
             self::RappelPromis                 => 'orange',
             self::EnAttenteConfirmationArtisan => 'purple',
             self::ArtisanConfirme              => 'success',
+
+            // NOUVELLES COULEURS
+            self::DevisEnAttente               => 'warning',
+            self::DevisAccepte                 => 'success',
             self::InterventionRealisee         => 'teal',
+            self::FactureEmise                 => 'indigo',
+            self::PaiementRecu                 => 'emerald',
+
             self::ClotureSatisfait             => 'emerald',
             self::SuiviQualiteRequis           => 'yellow',
             self::ReclamationOuverte           => 'red',
@@ -66,6 +89,7 @@ enum TicketStatut: string implements HasLabel, HasColor, HasIcon
     }
 
     public function getIcon(): ?string { return $this->icon(); }
+
     public function icon(): string
     {
         return match($this) {
@@ -77,7 +101,14 @@ enum TicketStatut: string implements HasLabel, HasColor, HasIcon
             self::RappelPromis                 => 'heroicon-o-phone-arrow-up-right',
             self::EnAttenteConfirmationArtisan => 'heroicon-o-clock',
             self::ArtisanConfirme              => 'heroicon-o-check-badge',
+
+            // NOUVELLES ICÔNES
+            self::DevisEnAttente               => 'heroicon-o-document-text',
+            self::DevisAccepte                 => 'heroicon-o-document-check',
             self::InterventionRealisee         => 'heroicon-o-wrench-screwdriver',
+            self::FactureEmise                 => 'heroicon-o-receipt-percent',
+            self::PaiementRecu                 => 'heroicon-o-credit-card',
+
             self::ClotureSatisfait             => 'heroicon-o-face-smile',
             self::SuiviQualiteRequis           => 'heroicon-o-clipboard-document-check',
             self::ReclamationOuverte           => 'heroicon-o-exclamation-triangle',
@@ -88,12 +119,54 @@ enum TicketStatut: string implements HasLabel, HasColor, HasIcon
 
     public function estActif(): bool
     {
-        return !in_array($this, [self::DossierCloture, self::ClotureSatisfait]);
+        return !in_array($this, [
+            self::DossierCloture,
+            self::ClotureSatisfait
+        ]);
     }
 
     public function estBloquant(): bool
     {
-        return in_array($this, [self::FicheIncomplete, self::ReclamationOuverte, self::SuiviQualiteRequis]);
+        return in_array($this, [
+            self::FicheIncomplete,
+            self::ReclamationOuverte,
+            self::SuiviQualiteRequis
+        ]);
+    }
+
+    /**
+     * Vérifie si le ticket est dans la phase financière (devis/facture)
+     */
+    public function estEnPhaseFinanciere(): bool
+    {
+        return in_array($this, [
+            self::DevisEnAttente,
+            self::DevisAccepte,
+            self::FactureEmise,
+            self::PaiementRecu,
+        ]);
+    }
+
+    /**
+     * Vérifie si le ticket est en attente d'action client
+     */
+    public function estEnAttenteClient(): bool
+    {
+        return in_array($this, [
+            self::DevisEnAttente,
+            self::RappelPromis,
+        ]);
+    }
+
+    /**
+     * Vérifie si le ticket est en attente d'action artisan
+     */
+    public function estEnAttenteArtisan(): bool
+    {
+        return in_array($this, [
+            self::EnAttenteConfirmationArtisan,
+            self::ArtisanConfirme,
+        ]);
     }
 
     public function ordre(): int
@@ -107,13 +180,30 @@ enum TicketStatut: string implements HasLabel, HasColor, HasIcon
             self::RappelPromis                 => 6,
             self::EnAttenteConfirmationArtisan => 7,
             self::ArtisanConfirme              => 8,
-            self::InterventionRealisee         => 9,
-            self::ClotureSatisfait             => 10,
-            self::SuiviQualiteRequis           => 11,
-            self::ReclamationOuverte           => 12,
-            self::P8EnTraitement               => 13,
-            self::DossierCloture               => 14,
+
+            // ORDRE DES NOUVEAUX STATUTS
+            self::DevisEnAttente               => 9,
+            self::DevisAccepte                 => 10,
+            self::InterventionRealisee         => 11,
+            self::FactureEmise                 => 12,
+            self::PaiementRecu                 => 13,
+
+            self::ClotureSatisfait             => 14,
+            self::SuiviQualiteRequis           => 15,
+            self::ReclamationOuverte           => 16,
+            self::P8EnTraitement               => 17,
+            self::DossierCloture               => 18,
         };
+    }
+
+    /**
+     * Retourne la progression en pourcentage (0-100)
+     */
+    public function progression(): int
+    {
+        $total = 18; // Nombre total de statuts
+        $position = $this->ordre();
+        return (int) round(($position / $total) * 100);
     }
 
     public function statutsSuivants(): array
@@ -123,16 +213,65 @@ enum TicketStatut: string implements HasLabel, HasColor, HasIcon
             self::EnQualification              => [self::FicheComplete, self::FicheIncomplete],
             self::FicheComplete                => [self::RdvPlanifie, self::RappelPromis],
             self::FicheIncomplete              => [self::EnQualification],
-            self::RdvPlanifie                  => [self::EnAttenteConfirmationArtisan, self::ArtisanConfirme],
-            self::RappelPromis                 => [self::EnQualification],
+            self::RdvPlanifie                  => [self::EnAttenteConfirmationArtisan],
+            self::RappelPromis                 => [self::EnQualification, self::DevisEnAttente],
             self::EnAttenteConfirmationArtisan => [self::ArtisanConfirme],
-            self::ArtisanConfirme              => [self::InterventionRealisee],
-            self::InterventionRealisee         => [self::ClotureSatisfait, self::SuiviQualiteRequis, self::ReclamationOuverte],
+            self::ArtisanConfirme              => [self::DevisEnAttente, self::InterventionRealisee],
+
+            // NOUVELLES TRANSITIONS
+            self::DevisEnAttente               => [self::DevisAccepte, self::EnQualification], // Refus devis → requalification
+            self::DevisAccepte                 => [self::InterventionRealisee],
+            self::InterventionRealisee         => [self::FactureEmise, self::ClotureSatisfait, self::SuiviQualiteRequis],
+            self::FactureEmise                 => [self::PaiementRecu],
+            self::PaiementRecu                 => [self::ClotureSatisfait],
+
             self::ClotureSatisfait             => [self::DossierCloture],
             self::SuiviQualiteRequis           => [self::P8EnTraitement, self::DossierCloture],
             self::ReclamationOuverte           => [self::P8EnTraitement],
             self::P8EnTraitement               => [self::DossierCloture],
             self::DossierCloture               => [],
         };
+    }
+
+    /**
+     * Retourne les statuts considérés comme "en cours de traitement"
+     */
+    public static function statutsActifs(): array
+    {
+        return array_filter(self::cases(), fn($statut) => $statut->estActif());
+    }
+
+    /**
+     * Retourne les statuts terminaux
+     */
+    public static function statutsTerminaux(): array
+    {
+        return [
+            self::DossierCloture,
+            self::ClotureSatisfait,
+        ];
+    }
+
+    /**
+     * Retourne les statuts nécessitant une attention prioritaire
+     */
+    public static function statutsCritiques(): array
+    {
+        return [
+            self::FicheIncomplete,
+            self::ReclamationOuverte,
+            self::SuiviQualiteRequis,
+        ];
+    }
+
+    /**
+     * Vérifie si le statut est valide pour une transition de devis
+     */
+    public static function peutEmissionDevis(): array
+    {
+        return [
+            self::ArtisanConfirme,
+            self::RdvPlanifie,
+        ];
     }
 }
