@@ -1,8 +1,10 @@
 <?php
+
 namespace App\Filament\Allopro\Resources\DevisResource\RelationManagers;
 
 use App\Enums\StatutBonDeCommande;
 use App\Filament\Allopro\Resources\BonDeCommandeResource;
+use App\Models\BonDeCommande;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -27,15 +29,16 @@ class BonDeCommandeRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('numero')->label('N° BC')->weight('semibold'),
 
                 Tables\Columns\TextColumn::make('statut')->label('Statut')->badge()
-                    ->formatStateUsing(fn($s) => $s instanceof StatutBonDeCommande ? $s->label() : $s)
-                    ->color(fn($s) => $s instanceof StatutBonDeCommande ? $s->color() : 'gray'),
+                    ->formatStateUsing(fn($state) => $state instanceof StatutBonDeCommande ? $state->label() : $state)
+                    ->color(fn($state) => $state instanceof StatutBonDeCommande ? $state->color() : 'gray'),
+
 
                 Tables\Columns\TextColumn::make('date_intervention_prevue')
                     ->label('Intervention')->dateTime('d/m/Y H:i'),
 
                 Tables\Columns\TextColumn::make('montant_total_ttc')
                     ->label('Montant TTC')
-                    ->formatStateUsing(fn($s) => number_format((float)$s, 2, ',', ' ') . ' €'),
+                    ->formatStateUsing(fn($state) => number_format((float)$state, 2, ',', ' ') . ' €'),
 
                 Tables\Columns\IconColumn::make('acompte_encaisse')
                     ->label('Acompte')->boolean(),
@@ -51,8 +54,9 @@ class BonDeCommandeRelationManager extends RelationManager
                     ->label('Confirmer')
                     ->icon('heroicon-o-check')
                     ->color('info')
-                    ->visible(fn($r) => $r->statut === StatutBonDeCommande::EnAttente)
-                    ->action(function ($record) {
+                    ->visible(fn(BonDeCommande $record) => $record->statut === StatutBonDeCommande::EnAttente)
+
+                    ->action(function (BonDeCommande $record) {
                         $record->confirmerParArtisan();
                         Notification::make()->title('BC confirmé')->success()->send();
                     }),
@@ -60,9 +64,9 @@ class BonDeCommandeRelationManager extends RelationManager
                     ->label('Réalisé')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn($r) => in_array($r->statut, [StatutBonDeCommande::Confirme, StatutBonDeCommande::EnCours]))
+                    ->visible(fn(BonDeCommande $record) => in_array($record->statut, [StatutBonDeCommande::Confirme, StatutBonDeCommande::EnCours]))
                     ->requiresConfirmation()
-                    ->action(function ($record) {
+                    ->action(function (BonDeCommande $record) {
                         $facture = $record->marquerRealise();
                         Notification::make()->title('Facture ' . $facture->numero . ' générée')->success()->send();
                     }),

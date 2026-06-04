@@ -3,6 +3,7 @@ namespace App\Filament\Allopro\Resources\BonDeCommandeResource\RelationManagers;
 
 use App\Enums\ModePaiement;
 use App\Enums\StatutPaiement;
+use App\Models\Facture;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -19,16 +20,31 @@ class FactureRelationManager extends RelationManager
     public function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\TextInput::make('numero')->label('N° Facture')->disabled()->dehydrated(false),
+            Forms\Components\TextInput::make('numero')
+                ->label('N° Facture')
+                ->disabled()
+                ->dehydrated(false),
+
             Forms\Components\Select::make('statut_paiement')
                 ->label('Statut paiement')
-                ->options(collect(StatutPaiement::cases())->mapWithKeys(fn($e) => [$e->value => $e->label()])->toArray())
-                ->native(false)->required(),
-            Forms\Components\DatePicker::make('date_echeance')->label('Échéance')->native(false)->required(),
+                ->options(collect(StatutPaiement::cases())
+                    ->mapWithKeys(fn($e) => [$e->value => $e->label()])
+                    ->toArray())
+                ->native(false)
+                ->required(),
+
+            Forms\Components\DatePicker::make('date_echeance')
+                ->label('Échéance')
+                ->native(false)
+                ->required(),
+
             Forms\Components\Select::make('mode_paiement')
                 ->label('Mode de paiement')
-                ->options(collect(ModePaiement::cases())->mapWithKeys(fn($e) => [$e->value => $e->label()])->toArray())
-                ->native(false)->nullable(),
+                ->options(collect(ModePaiement::cases())
+                    ->mapWithKeys(fn($e) => [$e->value => $e->label()])
+                    ->toArray())
+                ->native(false)
+                ->nullable(),
         ]);
     }
 
@@ -36,17 +52,35 @@ class FactureRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('numero')->label('N° Facture')->weight('semibold')->copyable(),
-                Tables\Columns\TextColumn::make('statut_paiement')->label('Statut paiement')->badge()
-                    ->formatStateUsing(fn($s) => $s instanceof StatutPaiement ? $s->label() : $s)
-                    ->color(fn($s) => $s instanceof StatutPaiement ? $s->color() : 'gray'),
-                Tables\Columns\TextColumn::make('total_ttc')->label('TTC')
-                    ->formatStateUsing(fn($s) => number_format((float)$s, 2, ',', ' ') . ' €')->weight('bold'),
-                Tables\Columns\TextColumn::make('solde_restant_du')->label('Solde dû')
-                    ->formatStateUsing(fn($s) => number_format((float)$s, 2, ',', ' ') . ' €')
-                    ->color(fn($s) => (float)$s > 0 ? 'danger' : 'success'),
-                Tables\Columns\TextColumn::make('date_echeance')->label('Échéance')->date('d/m/Y'),
-                Tables\Columns\TextColumn::make('date_paiement_effectif')->label('Payé le')->date('d/m/Y')->placeholder('—'),
+                Tables\Columns\TextColumn::make('numero')
+                    ->label('N° Facture')
+                    ->weight('semibold')
+                    ->copyable(),
+
+                Tables\Columns\TextColumn::make('statut_paiement')
+                    ->label('Statut paiement')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => $state instanceof StatutPaiement ? $state->label() : $state)
+                    ->color(fn($state) => $state instanceof StatutPaiement ? $state->color() : 'gray'),
+
+                Tables\Columns\TextColumn::make('total_ttc')
+                    ->label('TTC')
+                    ->formatStateUsing(fn($state) => number_format((float)$state, 2, ',', ' ') . ' €')
+                    ->weight('bold'),
+
+                Tables\Columns\TextColumn::make('solde_restant_du')
+                    ->label('Solde dû')
+                    ->formatStateUsing(fn($state) => number_format((float)$state, 2, ',', ' ') . ' €')
+                    ->color(fn($state) => (float)$state > 0 ? 'danger' : 'success'),
+
+                Tables\Columns\TextColumn::make('date_echeance')
+                    ->label('Échéance')
+                    ->date('d/m/Y'),
+
+                Tables\Columns\TextColumn::make('date_paiement_effectif')
+                    ->label('Payé le')
+                    ->date('d/m/Y')
+                    ->placeholder('—'),
             ])
             ->headerActions([])
             ->actions([
@@ -54,24 +88,35 @@ class FactureRelationManager extends RelationManager
                     ->label('Paiement')
                     ->icon('heroicon-o-banknotes')
                     ->color('success')
-                    ->visible(fn($r) => !$r->est_payee)
+                    ->visible(fn(Facture $record) => !$record->est_payee)
                     ->form([
                         Forms\Components\TextInput::make('montant')
                             ->label('Montant reçu (€)')
-                            ->numeric()->prefix('€')->required()
-                            ->default(fn($r) => $r->solde_restant_du),
+                            ->numeric()
+                            ->prefix('€')
+                            ->required()
+                            ->default(fn(Facture $record) => $record->solde_restant_du),
+
                         Forms\Components\Select::make('mode')
                             ->label('Mode')
-                            ->options(collect(ModePaiement::cases())->mapWithKeys(fn($e) => [$e->value => $e->label()])->toArray())
-                            ->native(false)->required(),
+                            ->options(collect(ModePaiement::cases())
+                                ->mapWithKeys(fn($e) => [$e->value => $e->label()])
+                                ->toArray())
+                            ->native(false)
+                            ->required(),
+
                         Forms\Components\DatePicker::make('date')
-                            ->label('Date de paiement')->native(false)->required()->default(today()),
+                            ->label('Date de paiement')
+                            ->native(false)
+                            ->required()
+                            ->default(today()),
                     ])
-                    ->action(function ($record, array $data) {
+                    ->action(function (Facture $record, array $data) {
                         $mode = ModePaiement::from($data['mode']);
                         $record->enregistrerPaiement($data['montant'], $mode, new \DateTime($data['date']));
                         Notification::make()->title('Paiement enregistré')->success()->send();
                     }),
+
                 Tables\Actions\ViewAction::make(),
             ]);
     }

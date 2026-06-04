@@ -23,32 +23,32 @@ class ListReclamationP8s extends ListRecords
             'actives' => Tab::make('Actives')
                 ->badge(ReclamationP8::actives()->count())
                 ->badgeColor('danger')
-                ->modifyQueryUsing(fn (\Illuminate\Database\Eloquent\Builder $query) => $query->actives()),
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->actives()),
 
-            'ouvertes'     => Tab::make('Ouvertes')
+            'ouvertes' => Tab::make('Ouvertes')
                 ->badge(ReclamationP8::ouvertes()->count())
                 ->badgeColor('danger')
-                ->modifyQueryUsing(fn($q) => $q->ouvertes()),
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->ouvertes()),
 
             'en_traitement' => Tab::make('En traitement')
                 ->badge(ReclamationP8::enTraitement()->count())
                 ->badgeColor('warning')
-                ->modifyQueryUsing(fn($q) => $q->enTraitement()),
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->enTraitement()),
 
-            'a_valider'    => Tab::make('⏳ À valider superviseur')
+            'a_valider' => Tab::make('⏳ À valider superviseur')
                 ->badge(ReclamationP8::aValider()->count())
                 ->badgeColor('warning')
-                ->modifyQueryUsing(fn($q) => $q->aValider()),
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->aValider()),
 
-            'en_retard'    => Tab::make('🔴 En retard SLA')
+            'en_retard' => Tab::make('🔴 En retard SLA')
                 ->badge(ReclamationP8::enRetard()->count())
                 ->badgeColor('danger')
-                ->modifyQueryUsing(fn($q) => $q->enRetard()),
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->enRetard()),
 
-            'cloturees'    => Tab::make('Clôturées')
+            'cloturees' => Tab::make('Clôturées')
                 ->badge(ReclamationP8::cloturees()->duMois()->count())
                 ->badgeColor('success')
-                ->modifyQueryUsing(fn($q) => $q->cloturees()),
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->cloturees()),
         ];
     }
 }

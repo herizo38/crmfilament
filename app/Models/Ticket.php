@@ -242,9 +242,9 @@ class Ticket extends Model
         return in_array($nouveauStatut, $this->statut?->statutsSuivants() ?? [], true);
     }
 
-    public function changerStatut(TicketStatut $nouveauStatut, ?string $notes = null): void
+    public function changerStatut(TicketStatut $nouveauStatut, ?string $notes = null, bool $force = false): void
     {
-        if (!$this->peutPasserA($nouveauStatut)) {
+        if (!$force && !$this->peutPasserA($nouveauStatut)) {
             throw new \Exception("Transition impossible de {$this->statut?->value} à {$nouveauStatut->value}");
         }
 
@@ -260,7 +260,14 @@ class Ticket extends Model
 
         $this->update($data);
     }
-// Dans App/Models/Ticket.php
+
+    /**
+     * Clôture définitive sans vérification de transition — usage interne uniquement.
+     */
+    public function cloturer(?string $notes = null): void
+    {
+        $this->changerStatut(TicketStatut::DossierCloture, $notes, force: true);
+    }
 
     /**
      * Fait progresser le ticket automatiquement jusqu'à un statut cible

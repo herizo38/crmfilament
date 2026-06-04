@@ -191,16 +191,13 @@ class ReclamationP8 extends Model
         $this->update($data);
     }
 
+    // ── Dans la méthode cloturer() ──
     public function cloturer(?string $notes = null): void
     {
         $this->changerStatut(StatutReclamation::Cloturee, $notes);
 
-        // Mettre à jour le ticket lié
         if ($this->ticket) {
-            $this->ticket->changerStatut(
-                TicketStatut::DossierCloture,
-                "Réclamation P8 clôturée"
-            );
+            $this->ticket->cloturer("Réclamation P8 clôturée");
         }
     }
 
@@ -384,10 +381,9 @@ class ReclamationP8 extends Model
                     ])
                     ->exists();
 
-                // Si aucune autre réclamation active, clôturer le ticket
+                // ── Dans booted() updating ──
                 if (!$autresActives) {
-                    $reclamation->ticket->changerStatut(
-                        TicketStatut::DossierCloture,
+                    $reclamation->ticket->cloturer(
                         "Toutes les réclamations P8 sont clôturées"
                     );
                 }

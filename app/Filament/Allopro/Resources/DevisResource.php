@@ -247,7 +247,8 @@ class DevisResource extends Resource
                 Tables\Columns\TextColumn::make('artisan.nom')
                     ->label('Artisan')
                     ->formatStateUsing(fn($record) => $record->artisan?->nom_complet ?? '—')
-                    ->description(fn($record) =>
+                    ->description(
+                        fn($record) =>
                         $record->artisan?->siret
                             ? 'SIRET : ' . $record->artisan->siret
                             : '⚠️ SIRET manquant'
@@ -267,19 +268,19 @@ class DevisResource extends Resource
                     ->sortable()
                     ->weight('semibold'),
 
-            Tables\Columns\TextColumn::make('date_validite')
-    ->label('Expire le')
-    ->date('d/m/Y')
-    ->color(fn($state, $record) => match (true) {
-        $record->est_expire          => 'danger',
-        $record->jours_avant_expiration <= 3 => 'warning',
-        default                      => 'gray',
-    })
-    ->description(fn($record) => match (true) {
-        $record->est_expire                  => 'Expiré',
-        $record->jours_avant_expiration <= 7 => 'J-' . $record->jours_avant_expiration,
-        default                              => null,
-    }),
+                Tables\Columns\TextColumn::make('date_validite')
+                    ->label('Expire le')
+                    ->date('d/m/Y')
+                    ->color(fn(Devis $record) => match (true) {
+                        $record->est_expire                      => 'danger',
+                        $record->jours_avant_expiration <= 3     => 'warning',
+                        default                                  => 'gray',
+                    })
+                    ->description(fn(Devis $record) => match (true) {
+                        $record->est_expire                      => 'Expiré',
+                        $record->jours_avant_expiration <= 7     => 'J-' . $record->jours_avant_expiration,
+                        default                                  => null,
+                    }),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Créé le')
@@ -425,10 +426,10 @@ class DevisResource extends Resource
                     TextEntry::make('contactParticulier.nom')
                         ->label('Client')
                         ->formatStateUsing(
-                            fn($record) =>
+                            fn($state, Devis $record) =>
                             trim(($record->contactParticulier?->prenom ?? '') . ' ' . ($record->contactParticulier?->nom ?? '')) ?: '—'
                         )
-                        ->suffix(fn($record) => $record->contactParticulier?->telephone ? " | {$record->contactParticulier->telephone}" : ''),
+                        ->suffix(fn(Devis $record) => $record->contactParticulier?->telephone ? " | {$record->contactParticulier->telephone}" : ''),
                 ]),
 
             Section::make('Montants')

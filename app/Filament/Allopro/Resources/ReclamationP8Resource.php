@@ -27,7 +27,6 @@ class ReclamationP8Resource extends Resource
     protected static ?int    $navigationSort      = 2;
     protected static ?string $recordTitleAttribute = 'id';
 
-    // ── Badge : réclamations actives ─────────────────────────────
     public static function getNavigationBadge(): ?string
     {
         $count = ReclamationP8::actives()->count();
@@ -39,7 +38,6 @@ class ReclamationP8Resource extends Resource
         return ReclamationP8::enRetard()->count() > 0 ? 'danger' : 'warning';
     }
 
-    // ── Formulaire (édition uniquement — création via P6 auto) ───
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -89,58 +87,58 @@ class ReclamationP8Resource extends Resource
         ]);
     }
 
-    // ── Table ────────────────────────────────────────────────────
     public static function table(Table $table): Table
     {
         return $table
             ->defaultSort('date_ouverture', 'desc')
             ->poll('30s')
             ->columns([
-                // ── Urgence visuelle ──
                 Tables\Columns\TextColumn::make('urgence_level')
                     ->label('')
-                    ->getStateUsing(fn($r) => $r->est_en_retard ? '🔴' : ($r->delai_restant_jours <= 1 ? '🟠' : '🟢'))
+                    ->getStateUsing(fn(ReclamationP8 $record) => $record->est_en_retard
+                        ? '🔴'
+                        : ($record->delai_restant_jours <= 1 ? '🟠' : '🟢'))
                     ->width(40),
 
                 Tables\Columns\TextColumn::make('ticket.reference')
                     ->label('Ticket')
                     ->searchable()
                     ->weight('semibold')
-                    ->url(fn($r) => $r->ticket_id
-                        ? TicketResource::getUrl('view', ['record' => $r->ticket_id])
+                    ->url(fn(ReclamationP8 $record) => $record->ticket_id
+                        ? TicketResource::getUrl('view', ['record' => $record->ticket_id])
                         : null)
                     ->color('primary'),
 
                 Tables\Columns\TextColumn::make('statut')
                     ->label('Statut')
                     ->badge()
-                    ->formatStateUsing(fn($s) => $s instanceof StatutReclamation ? $s->label() : $s)
-                    ->color(fn($s) => $s instanceof StatutReclamation ? $s->color() : match($s) {
+                    ->formatStateUsing(fn($state) => $state instanceof StatutReclamation ? $state->label() : $state)
+                    ->color(fn($state) => $state instanceof StatutReclamation ? $state->color() : match ($state) {
                         'ouverte'             => 'danger',
                         'en_traitement'       => 'warning',
                         'validee_superviseur' => 'info',
                         'cloturee'            => 'success',
                         default               => 'gray',
                     })
-                    ->icon(fn($s) => $s instanceof StatutReclamation ? $s->icon() : null),
+                    ->icon(fn($state) => $state instanceof StatutReclamation ? $state->icon() : null),
 
                 Tables\Columns\TextColumn::make('rapportSatisfaction.note_nps')
                     ->label('NPS déclencheur')
                     ->badge()
-                    ->formatStateUsing(fn($s) => $s . ' / 10')
-                    ->color(fn($s) => $s <= 3 ? 'danger' : 'warning')
+                    ->formatStateUsing(fn($state) => $state . ' / 10')
+                    ->color(fn($state) => (int)$state <= 3 ? 'danger' : 'warning')
                     ->placeholder('—'),
 
                 Tables\Columns\TextColumn::make('ticket.artisan.nom')
                     ->label('Artisan')
-                    ->formatStateUsing(fn($s, $r) => $r->ticket?->artisan?->nom_complet ?? '—'),
+                    ->formatStateUsing(fn($state, ReclamationP8 $record) => $record->ticket?->artisan?->nom_complet ?? '—'),
 
                 Tables\Columns\TextColumn::make('ticket.contactParticulier.nom')
                     ->label('Client')
-                    ->formatStateUsing(fn($s, $r) =>
-                        trim(($r->ticket?->contactParticulier?->prenom ?? '') . ' ' . ($r->ticket?->contactParticulier?->nom ?? '')) ?: '—'
+                    ->formatStateUsing(
+                        fn($state, ReclamationP8 $record) =>
+                        trim(($record->ticket?->contactParticulier?->prenom ?? '') . ' ' . ($record->ticket?->contactParticulier?->nom ?? '')) ?: '—'
                     ),
-
                 Tables\Columns\TextColumn::make('date_ouverture')
                     ->label('Ouverte le')
                     ->dateTime('d/m/Y H:i')
@@ -148,18 +146,19 @@ class ReclamationP8Resource extends Resource
 
                 Tables\Columns\TextColumn::make('delai_restant_formate')
                     ->label('Délai restant')
-                    ->getStateUsing(fn($r) => $r->delai_restant_formate)
-                    ->color(fn($r) => match(true) {
-                        $r->est_en_retard        => 'danger',
-                        $r->delai_restant_jours <= 1 => 'warning',
-                        default                  => 'success',
+                    ->getStateUsing(fn(ReclamationP8 $record) => $record->delai_restant_formate)
+                    ->color(fn(ReclamationP8 $record) => match (true) {
+                        $record->est_en_retard           => 'danger',
+                        $record->delai_restant_jours <= 1 => 'warning',
+                        default                          => 'success',
                     })
                     ->weight('semibold'),
 
                 Tables\Columns\IconColumn::make('validation_superviseur')
                     ->label('Superviseur')
                     ->boolean()
-                    ->trueColor('success')->falseColor('gray'),
+                    ->trueColor('success')
+                    ->falseColor('gray'),
 
                 Tables\Columns\TextColumn::make('date_resolution_effective')
                     ->label('Résolue le')
@@ -173,7 +172,8 @@ class ReclamationP8Resource extends Resource
                     ->label('Statut')
                     ->options(collect(StatutReclamation::cases())
                         ->mapWithKeys(fn($e) => [$e->value => $e->label()])->toArray())
-                    ->native(false)->multiple(),
+                    ->native(false)
+                    ->multiple(),
 
                 Tables\Filters\Filter::make('en_retard')
                     ->label('🔴 En retard SLA')
@@ -185,17 +185,15 @@ class ReclamationP8Resource extends Resource
 
                 Tables\Filters\Filter::make('actives')
                     ->label('Actives')
-                    ->query(fn($query) => $query->actives())
-                    ->default(),
+                    ->query(fn(Builder $query) => $query->actives())
             ])
 
             ->actions([
-                // ── Prendre en charge ──
                 Tables\Actions\Action::make('prendre_en_charge')
                     ->label('Prendre en charge')
                     ->icon('heroicon-o-hand-raised')
                     ->color('warning')
-                    ->visible(fn(ReclamationP8 $r) => $r->estOuverte())
+                    ->visible(fn(ReclamationP8 $record) => $record->estOuverte())
                     ->form([
                         Forms\Components\Textarea::make('notes')
                             ->label('Plan d\'action initial')
@@ -210,14 +208,14 @@ class ReclamationP8Resource extends Resource
                             ->warning()->send();
                     }),
 
-                // ── Valider superviseur ──
                 Tables\Actions\Action::make('valider_superviseur')
                     ->label('Validation superviseur')
                     ->icon('heroicon-o-shield-check')
                     ->color('info')
-                    ->visible(fn(ReclamationP8 $r) =>
-                        $r->estEnTraitement() &&
-                        auth()->user()?->hasAnyRole(['responsable_plateau', 'superviseur'])
+                    ->visible(
+                        fn(ReclamationP8 $record) =>
+                        $record->estEnTraitement() &&
+                            auth()->user()?->hasAnyRole(['responsable_plateau', 'superviseur'])
                     )
                     ->form([
                         Forms\Components\Textarea::make('notes')
@@ -232,13 +230,13 @@ class ReclamationP8Resource extends Resource
                             ->info()->send();
                     }),
 
-                // ── Clôturer ──
                 Tables\Actions\Action::make('cloturer')
                     ->label('Clôturer')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn(ReclamationP8 $r) =>
-                        $r->estValideeSuperviseur() || $r->estEnTraitement()
+                    ->visible(
+                        fn(ReclamationP8 $record) =>
+                        $record->estValideeSuperviseur() || $record->estEnTraitement()
                     )
                     ->form([
                         Forms\Components\Textarea::make('notes')
@@ -256,7 +254,7 @@ class ReclamationP8Resource extends Resource
 
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make()
-                    ->visible(fn(ReclamationP8 $r) => $r->estActive()),
+                    ->visible(fn(ReclamationP8 $record) => $record->estActive()),
             ])
 
             ->emptyStateIcon('heroicon-o-check-circle')
@@ -265,7 +263,6 @@ class ReclamationP8Resource extends Resource
             ->striped();
     }
 
-    // ── Infolist ─────────────────────────────────────────────────
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
@@ -277,33 +274,33 @@ class ReclamationP8Resource extends Resource
                     TextEntry::make('statut')
                         ->label('Statut')
                         ->badge()
-                        ->formatStateUsing(fn($s) => $s instanceof StatutReclamation ? $s->label() : $s)
-                        ->color(fn($s) => $s instanceof StatutReclamation ? $s->color() : 'gray'),
+                        ->formatStateUsing(fn($state) => $state instanceof StatutReclamation ? $state->label() : $state)
+                        ->color(fn($state) => $state instanceof StatutReclamation ? $state->color() : 'gray'),
 
                     TextEntry::make('date_ouverture')->label('Ouverte le')->dateTime('d/m/Y H:i'),
 
                     TextEntry::make('date_resolution_cible')
                         ->label('Résolution cible')
                         ->date('d/m/Y')
-                        ->color(fn($s, $r) => $r->est_en_retard ? 'danger' : 'warning'),
+                        ->color(fn($state, ReclamationP8 $record) => $record->est_en_retard ? 'danger' : 'warning'),
 
                     TextEntry::make('delai_restant_formate')
                         ->label('Délai restant')
-                        ->getStateUsing(fn($r) => $r->delai_restant_formate)
-                        ->color(fn($r) => $r->est_en_retard ? 'danger' : 'success'),
+                        ->getStateUsing(fn(ReclamationP8 $record) => $record->delai_restant_formate)
+                        ->color(fn(ReclamationP8 $record) => $record->est_en_retard ? 'danger' : 'success'),
                 ]),
 
             Section::make('Contexte NPS')
                 ->columns(3)
                 ->schema([
                     TextEntry::make('ticket.reference')->label('Ticket')
-                        ->url(fn($r) => $r->ticket_id
-                            ? TicketResource::getUrl('view', ['record' => $r->ticket_id])
+                        ->url(fn(ReclamationP8 $record) => $record->ticket_id
+                            ? TicketResource::getUrl('view', ['record' => $record->ticket_id])
                             : null),
 
                     TextEntry::make('rapportSatisfaction.note_nps')
                         ->label('NPS déclencheur')
-                        ->formatStateUsing(fn($s) => $s . ' / 10')
+                        ->formatStateUsing(fn($state) => $state . ' / 10')
                         ->badge()
                         ->color('danger'),
 
@@ -318,34 +315,70 @@ class ReclamationP8Resource extends Resource
                 ->schema([
                     TextEntry::make('ticket.artisan.nom')
                         ->label('Artisan')
-                        ->formatStateUsing(fn($s, $r) => $r->ticket?->artisan?->nom_complet ?? '—'),
+                        ->formatStateUsing(fn($state, ReclamationP8 $record) => $record->ticket?->artisan?->nom_complet ?? '—'),
+
                     TextEntry::make('ticket.contactParticulier.nom')
                         ->label('Client')
-                        ->formatStateUsing(fn($s, $r) =>
-                            trim(($r->ticket?->contactParticulier?->prenom ?? '') . ' ' . ($r->ticket?->contactParticulier?->nom ?? '')) ?: '—'
+                        ->formatStateUsing(
+                            fn($state, ReclamationP8 $record) =>
+                            trim(($record->ticket?->contactParticulier?->prenom ?? '') . ' ' . ($record->ticket?->contactParticulier?->nom ?? '')) ?: '—'
                         )
-                        ->description(fn($r) => $r->ticket?->contactParticulier?->telephone),
+                        ->hint(fn(ReclamationP8 $record) => $record->ticket?->contactParticulier?->telephone),
                 ]),
 
             Section::make('Suivi résolution')
+                ->icon('heroicon-o-clipboard-document-list')
                 ->collapsible()
+                ->columns(3)
                 ->schema([
-                    TextEntry::make('description_reclamation')->label('Description initiale')->prose(),
-                    TextEntry::make('notes_resolution')->label('Notes de résolution')->prose()->placeholder('En attente…'),
+                    // ── Textes pleine largeur ──
+                    TextEntry::make('description_reclamation')
+                        ->label('Description initiale')
+                        ->prose()
+                        ->columnSpanFull()
+                        ->extraAttributes(['class' => 'bg-gray-50 rounded-lg p-3']),
 
-                    IconEntry::make('validation_superviseur')->label('Validé superviseur')
-                        ->boolean()->trueColor('success')->falseColor('gray'),
+                    TextEntry::make('notes_resolution')
+                        ->label('Notes de résolution')
+                        ->prose()
+                        ->placeholder('En attente…')
+                        ->columnSpanFull()
+                        ->extraAttributes(['class' => 'bg-gray-50 rounded-lg p-3']),
 
-                    TextEntry::make('superviseur.prenom')->label('Superviseur')
-                        ->formatStateUsing(fn($s, $r) =>
-                            trim(($r->superviseur?->prenom ?? '') . ' ' . ($r->superviseur?->nom ?? '')) ?: '—'
+                    // ── Métadonnées de résolution sur 3 colonnes ──
+                    IconEntry::make('validation_superviseur')
+                        ->label('Validé superviseur')
+                        ->boolean()
+                        ->trueIcon('heroicon-o-shield-check')
+                        ->falseIcon('heroicon-o-shield-exclamation')
+                        ->trueColor('success')
+                        ->falseColor('gray'),
+
+                    TextEntry::make('superviseur.prenom')
+                        ->label('Superviseur')
+                        ->icon('heroicon-o-user-circle')
+                        ->formatStateUsing(
+                            fn($state, ReclamationP8 $record) =>
+                            trim(($record->superviseur?->prenom ?? '') . ' ' . ($record->superviseur?->nom ?? '')) ?: '—'
                         ),
 
-                    TextEntry::make('date_resolution_effective')->label('Résolue le')
-                        ->date('d/m/Y')->placeholder('—'),
+                    TextEntry::make('date_resolution_effective')
+                        ->label('Résolue le')
+                        ->icon('heroicon-o-calendar-days')
+                        ->date('d/m/Y')
+                        ->placeholder('—'),
 
-                    TextEntry::make('delai_resolution_jours')->label('Délai réel de résolution')
-                        ->formatStateUsing(fn($s) => $s ? $s . ' jour(s)' : '—'),
+                    TextEntry::make('delai_resolution_jours')
+                        ->label('Délai réel')
+                        ->icon('heroicon-o-clock')
+                        ->formatStateUsing(fn($state) => $state ? $state . ' jour(s)' : '—')
+                        ->badge()
+                        ->color(fn($state) => match (true) {
+                            !$state        => 'gray',
+                            $state <= 3    => 'success',
+                            $state <= 5    => 'warning',
+                            default        => 'danger',
+                        }),
                 ]),
         ]);
     }
@@ -358,7 +391,6 @@ class ReclamationP8Resource extends Resource
         ];
     }
 
-    // P8 créées uniquement via NPS ≤ 5 — pas de création manuelle standard
     public static function canCreate(): bool
     {
         return false;

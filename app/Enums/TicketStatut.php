@@ -226,15 +226,14 @@ enum TicketStatut: string implements HasLabel, HasColor, HasIcon
             self::FicheIncomplete              => [self::EnQualification],
             self::RdvPlanifie                  => [self::EnAttenteConfirmationArtisan],
             self::RappelPromis                 => [self::EnQualification, self::DevisEnAttente],
-            self::EnAttenteConfirmationArtisan => [self::ArtisanConfirme],  // ← Transition correcte
+            self::EnAttenteConfirmationArtisan => [self::ArtisanConfirme],
             self::ArtisanConfirme              => [self::DevisEnAttente, self::InterventionRealisee],
 
-            // NOUVELLES TRANSITIONS
             self::DevisEnAttente               => [self::DevisAccepte, self::EnQualification],
             self::DevisAccepte                 => [self::InterventionRealisee],
             self::InterventionRealisee         => [self::FactureEmise, self::ClotureSatisfait, self::SuiviQualiteRequis],
             self::FactureEmise                 => [self::PaiementRecu],
-            self::PaiementRecu                 => [self::ClotureSatisfait],
+            self::PaiementRecu                 => [self::ClotureSatisfait, self::DossierCloture],
 
             self::ClotureSatisfait             => [self::DossierCloture],
             self::SuiviQualiteRequis           => [self::P8EnTraitement, self::DossierCloture],
