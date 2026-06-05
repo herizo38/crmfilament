@@ -6,6 +6,7 @@ use App\Models\ArtisanProspection;
 use App\Models\ContactPartenaire;
 use App\Models\ContactParticulier;
 use App\Models\Prospect;
+use App\Models\ScriptAppel;
 use App\Enums\StatutCampagneProspection;
 use App\Enums\ProspectStatut;
 use Filament\Pages\Page;
@@ -16,32 +17,43 @@ use Illuminate\Database\Eloquent\Model;
 
 class PhoningWorkflow extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-phone-arrow-up-right';
-    protected static ?string $navigationLabel = 'Campagne d\'appels';
-    protected static ?string $navigationGroup = 'Activités';
-    protected static ?int $navigationSort = 2;
-    protected static string $view = 'filament.ns-conseil.pages.phoning-workflow';
+    protected static ?string $navigationIcon    = 'heroicon-o-phone-arrow-up-right';
+    protected static ?string $navigationLabel   = 'Campagne d\'appels';
+    protected static ?string $navigationGroup   = 'Activités';
+    protected static ?int    $navigationSort    = 2;
+    protected static string  $view              = 'filament.ns-conseil.pages.phoning-workflow';
 
-    public ?Model $currentContact = null;
-    public string $contactType = '';
-    public string $commentaires = '';
+    // ── État du contact courant ──────────────────────────────────────
+    public ?Model  $currentContact = null;
+    public string  $contactType    = '';
+
+    // ── Formulaire de compte rendu ───────────────────────────────────
+    public string $commentaires    = '';
     public string $statut_resultat = '';
-    public string $rappel_date = '';
-    public string $rappel_heure = '';
+    public string $rappel_date     = '';
+    public string $rappel_heure    = '';
 
-    public int $progress = 0;
-    public int $total = 0;
-    public int $completed = 0;
+    // ── Onglet actif du script ───────────────────────────────────────
     public string $activeScriptTab = 'accroche';
 
+    // ── Progression ─────────────────────────────────────────────────
+    public int $progress  = 0;
+    public int $total     = 0;
+    public int $completed = 0;
+
+    // ── Scripts chargés (tableau onglet => ScriptAppel|null) ─────────
+    public array $scripts = [];
+
+    // ── Mount ────────────────────────────────────────────────────────
     public function mount(): void
     {
         $this->loadNextContact();
     }
 
+    // ── Chargement du prochain contact ───────────────────────────────
     public function loadNextContact(): void
     {
-        // 1. ArtisanProspection avec statut actif ou à relancer
+        // 1. ArtisanProspection
         $artisans = ArtisanProspection::query()
             ->whereIn('statut_campagne', [
                 StatutCampagneProspection::AC,
@@ -50,118 +62,112 @@ class PhoningWorkflow extends Page
             ])
             ->where(function ($q) {
                 $q->whereNull('date_dernier_contact')
-                    ->orWhere('date_dernier_contact', '<=', now()->subHours(72));
+                  ->orWhere('date_dernier_contact', '<=', now()->subHours(72));
             })
             ->get()
-            ->map(fn($item) => (object) [
-                'id' => $item->id,
-                'type' => 'artisan',
-                'nom' => $item->nom,
-                'prenom' => null,
-                'telephone' => $item->telephone,
-                'email' => null,
+            ->map(fn ($item) => (object) [
+                'id'          => $item->id,
+                'type'        => 'artisan',
+                'nom'         => $item->nom,
+                'prenom'      => null,
+                'telephone'   => $item->telephone,
+                'email'       => null,
                 'statut_actuel' => $item->statut_campagne->label(),
-                'priorite' => $item->priorite_segment->label(),
-                'notes' => $item->notes,
-                'model' => $item,
+                'priorite'    => $item->priorite_segment->label(),
+                'notes'       => $item->notes,
+                'model'       => $item,
             ]);
 
-        // 2. ContactPartenaire - CORRECTION : utiliser les colonnes réelles
+        // 2. ContactPartenaire
         $partenaires = ContactPartenaire::query()
             ->where(function ($q) {
-                // Vérifier si au moins un numéro de téléphone existe (contactable)
                 $q->whereNotNull('telephone_direct')
-                    ->orWhereNotNull('telephone_mobile')
-                    ->orWhereNotNull('telephone_perso');
+                  ->orWhereNotNull('telephone_mobile')
+                  ->orWhereNotNull('telephone_perso');
             })
             ->whereNull('deleted_at')
             ->get()
-            ->map(fn($item) => (object) [
-                'id' => $item->id,
-                'type' => 'partenaire',
-                'nom' => $item->nom,
-                'prenom' => $item->prenom,
-                'telephone' => $item->telephone_direct ?? $item->telephone_mobile ?? $item->telephone_perso,
-                'email' => $item->email ?? $item->email_perso,
+            ->map(fn ($item) => (object) [
+                'id'          => $item->id,
+                'type'        => 'partenaire',
+                'nom'         => $item->nom,
+                'prenom'      => $item->prenom,
+                'telephone'   => $item->telephone_direct ?? $item->telephone_mobile ?? $item->telephone_perso,
+                'email'       => $item->email ?? $item->email_perso,
                 'statut_actuel' => $item->est_principal ? 'Principal' : 'Contact',
-                'priorite' => $item->niveau_influence_label ?? 'Standard',
-                'notes' => $item->notes,
-                'model' => $item,
+                'priorite'    => $item->niveau_influence_label ?? 'Standard',
+                'notes'       => $item->notes,
+                'model'       => $item,
             ]);
 
-        // 3. ContactParticulier - filtrer ceux avec téléphone
+        // 3. ContactParticulier
         $particuliers = ContactParticulier::query()
             ->whereNotNull('telephone')
             ->get()
-            ->map(fn($item) => (object) [
-                'id' => $item->id,
-                'type' => 'particulier',
-                'nom' => $item->nom,
-                'prenom' => $item->prenom,
-                'telephone' => $item->telephone,
-                'email' => $item->email,
+            ->map(fn ($item) => (object) [
+                'id'          => $item->id,
+                'type'        => 'particulier',
+                'nom'         => $item->nom,
+                'prenom'      => $item->prenom,
+                'telephone'   => $item->telephone,
+                'email'       => $item->email,
                 'statut_actuel' => $item->statut_occupant?->label() ?? 'Contact',
-                'priorite' => $item->type_logement?->label() ?? 'Standard',
-                'notes' => $item->adresse_complete,
-                'model' => $item,
+                'priorite'    => $item->type_logement?->label() ?? 'Standard',
+                'notes'       => $item->adresse_complete,
+                'model'       => $item,
             ]);
 
-        // 4. Prospect avec statut AC (À contacter) - NOUVEAU
+        // 4. Prospect AC
         $prospects = Prospect::query()
             ->where('statut', ProspectStatut::AC)
             ->where(function ($q) {
                 $q->whereNull('date_premier_contact')
-                    ->orWhere('date_premier_contact', '<=', now()->subHours(72));
+                  ->orWhere('date_premier_contact', '<=', now()->subHours(72));
             })
             ->whereNull('deleted_at')
             ->get()
-            ->map(fn($item) => (object) [
-                'id' => $item->id,
-                'type' => 'prospect',
-                'nom' => $item->nom,
-                'prenom' => null,
-                'telephone' => $item->telephone,
-                'email' => $item->email,
+            ->map(fn ($item) => (object) [
+                'id'          => $item->id,
+                'type'        => 'prospect',
+                'nom'         => $item->nom,
+                'prenom'      => null,
+                'telephone'   => $item->telephone,
+                'email'       => $item->email,
                 'statut_actuel' => $item->statut_label,
-                'priorite' => $item->type_pressenti ? ucfirst(str_replace('_', ' ', $item->type_pressenti)) : 'Standard',
-                'notes' => $item->description,
-                'model' => $item,
+                'priorite'    => $item->type_pressenti
+                    ? ucfirst(str_replace('_', ' ', $item->type_pressenti))
+                    : 'Standard',
+                'notes'       => $item->description,
+                'model'       => $item,
             ]);
 
-        // Fusionner et trier par priorité
-        $allContacts = $artisans->concat($partenaires)->concat($particuliers)->concat($prospects)
-            ->sortByDesc(function ($contact) {
-                $prioriteMap = [
-                    'Haute' => 5,
-                    'Très fort' => 5,
-                    'Décisionnaire' => 5,
-                    'Fort' => 4,
-                    'Moyen' => 3,
-                    'Faible' => 2,
-                    'Standard' => 2,
-                    'Basse' => 1,
-                ];
+        $prioriteMap = [
+            'Haute' => 5, 'Très fort' => 5, 'Décisionnaire' => 5,
+            'Fort'  => 4, 'Moyen'     => 3,
+            'Faible' => 2, 'Standard' => 2, 'Basse' => 1,
+        ];
 
-                return $prioriteMap[$contact->priorite] ?? 1;
-            });
+        $allContacts = $artisans
+            ->concat($partenaires)
+            ->concat($particuliers)
+            ->concat($prospects)
+            ->sortByDesc(fn ($c) => $prioriteMap[$c->priorite] ?? 1);
 
         $nextContact = $allContacts->first();
 
         if ($nextContact) {
             $this->currentContact = $nextContact->model;
-            $this->contactType = $nextContact->type;
+            $this->contactType    = $nextContact->type;
+            $this->loadScripts();
         } else {
             $this->currentContact = null;
+            $this->scripts        = [];
         }
 
-        // Stats de progression (total des contacts contactables)
-        $this->total = $artisans->count() + $partenaires->count() + $particuliers->count() + $prospects->count();
-
-        // Pour le complété, vous pouvez stocker dans une table séparée ou utiliser un champ
-        // Pour l'instant, on met 0 et on incrémente manuellement
+        $this->total    = $allContacts->count();
         $this->progress = $this->total > 0 ? round(($this->completed / $this->total) * 100) : 0;
 
-        if (!$nextContact) {
+        if (! $nextContact) {
             Notification::make()
                 ->title('🎉 Campagne terminée !')
                 ->body('Plus de contacts à appeler pour le moment.')
@@ -169,65 +175,94 @@ class PhoningWorkflow extends Page
                 ->send();
         } else {
             $this->reset(['commentaires', 'statut_resultat', 'rappel_date', 'rappel_heure']);
+            $this->activeScriptTab = 'accroche';
         }
     }
 
-    public function callNow(): \Illuminate\Http\RedirectResponse
+    // ── Chargement des scripts dynamiques ────────────────────────────
+    protected function loadScripts(): void
     {
-        if (!$this->currentContact) {
+        $this->scripts = ScriptAppel::parOngletPourContact($this->contactType);
+    }
+
+    /**
+     * Retourne le script interpolé pour l'onglet actif.
+     * Accessible depuis le Blade via $this->getScriptCourant().
+     */
+    public function getScriptCourant(): ?ScriptAppel
+    {
+        return $this->scripts[$this->activeScriptTab] ?? null;
+    }
+
+    /**
+     * Variables de remplacement pour les scripts.
+     */
+    public function getVariablesScript(): array
+    {
+        $info = $this->getContactInfo();
+
+        return [
+            'contact_nom'     => $info['nom']    ?? '',
+            'contact_prenom'  => $info['prenom'] ?? '',
+            'commercial_nom'  => Auth::user()?->name ?? '[VOTRE NOM]',
+        ];
+    }
+
+    // ── Appel téléphonique ───────────────────────────────────────────
+    /**
+     * FIX : on retourne void et on redirige avec $this->redirect()
+     * (Livewire v3 / Filament v3).
+     */
+    public function callNow(): void
+    {
+        if (! $this->currentContact) {
             Notification::make()
                 ->title('Aucun contact')
                 ->body('Impossible d\'appeler : aucun contact chargé')
                 ->danger()
                 ->send();
-            return redirect()->back();
+            return;
         }
 
-        // Récupérer le numéro selon le type
-        $phoneNumber = match ($this->contactType) {
-            'artisan' => $this->currentContact->telephone,
-            'partenaire' => $this->currentContact->telephone_principal,
-            'particulier' => $this->currentContact->telephone,
-            'prospect' => $this->currentContact->telephone,
-            default => null,
-        };
+        $info        = $this->getContactInfo();
+        $phoneNumber = $info['telephone'] ?? null;
 
-        if (!$phoneNumber) {
+        if (! $phoneNumber) {
             Notification::make()
                 ->title('Numéro manquant')
                 ->body('Impossible d\'appeler : numéro non disponible')
                 ->danger()
                 ->send();
-            return redirect()->back();
+            return;
         }
 
         $phoneNumber = preg_replace('/[^0-9+]/', '', $phoneNumber);
 
-        // Redirige vers Aircall Phone
-        return redirect()->away("https://phone.aircall.io/call/{$phoneNumber}");
+        // Livewire v3 : $this->redirect() pour les redirections externes
+        $this->redirect("https://phone.aircall.io/call/{$phoneNumber}");
     }
 
+    // ── Enregistrement du résultat ───────────────────────────────────
     public function submitResult(): void
     {
-        if (!$this->currentContact)
-            return;
+        if (! $this->currentContact) return;
 
         $this->validate([
-            'statut_resultat' => 'required|in:qualifie,non_joignable,rappel,a_relancer',
-            'commentaires' => 'nullable|string|max:1000',
+            'statut_resultat' => 'required|in:std_nr,std_joint,cse_nr,rp,rpc,ko',
+            'commentaires'    => 'nullable|string|max:1000',
         ]);
 
-        // Mettre à jour selon le type de contact
         match ($this->contactType) {
-            'artisan' => $this->updateArtisan(),
-            'partenaire' => $this->updatePartenaire(),
+            'artisan'     => $this->updateArtisan(),
+            'partenaire'  => $this->updatePartenaire(),
             'particulier' => $this->updateParticulier(),
-            'prospect' => $this->updateProspect(),
+            'prospect'    => $this->updateProspect(),
+            default       => null,
         };
 
         Notification::make()
             ->title('Contact qualifié')
-            ->body("Statut : " . $this->getResultLabel())
+            ->body('Statut : ' . $this->getResultLabel())
             ->success()
             ->send();
 
@@ -235,72 +270,57 @@ class PhoningWorkflow extends Page
         $this->loadNextContact();
     }
 
+    // ── Mise à jour par type de contact ──────────────────────────────
     protected function updateArtisan(): void
     {
         $artisan = $this->currentContact;
 
         $nouveauStatut = match ($this->statut_resultat) {
-            'qualifie' => StatutCampagneProspection::RP, // Rendez-vous pris
-            'non_joignable' => StatutCampagneProspection::NR, // Non répondu
-            'rappel' => StatutCampagneProspection::OBJ, // Objection / à rappeler
-            'a_relancer' => StatutCampagneProspection::AC, // Actif
-            default => StatutCampagneProspection::AC,
+            'std_joint', 'rp', 'rpc' => StatutCampagneProspection::RP,
+            'std_nr', 'cse_nr'        => StatutCampagneProspection::NR,
+            'ko'                      => StatutCampagneProspection::KO ?? StatutCampagneProspection::NR,
+            default                   => StatutCampagneProspection::AC,
         };
 
         $artisan->changerStatut($nouveauStatut, $this->commentaires);
         $artisan->marquerContact();
 
-        if ($this->statut_resultat === 'rappel' && $this->rappel_date) {
-            // Ajouter une note pour le rappel
-            $rappelDateTime = $this->rappel_date;
-            if ($this->rappel_heure) {
-                $rappelDateTime .= ' ' . $this->rappel_heure;
-            }
+        if ($this->statut_resultat === 'rp' && $this->rappel_date) {
+            $rappelDateTime = $this->rappel_date . ($this->rappel_heure ? ' ' . $this->rappel_heure : '');
             $artisan->ajouterNote("Rappel programmé le {$rappelDateTime}");
         }
     }
 
     protected function updatePartenaire(): void
     {
-        $partenaire = $this->currentContact;
-
-        $note = "[Appel du " . now()->format('d/m/Y H:i') . "] ";
+        $note  = "[Appel du " . now()->format('d/m/Y H:i') . "] ";
         $note .= match ($this->statut_resultat) {
-            'qualifie' => "✅ Contact qualifié - Intéressé",
-            'non_joignable' => "❌ Non joignable après appel",
-            'rappel' => "🔄 Rappel à programmer" . ($this->rappel_date ? " le {$this->rappel_date}" : ""),
-            'a_relancer' => "📞 À relancer ultérieurement",
-            default => "Appel effectué",
+            'std_joint', 'rp', 'rpc' => "✅ Contact joint",
+            'std_nr', 'cse_nr'        => "❌ Non joignable",
+            'ko'                      => "🚫 Refus / KO",
+            default                   => "Appel effectué",
         };
 
-        if ($this->commentaires) {
-            $note .= "\nCommentaires : {$this->commentaires}";
-        }
+        if ($this->commentaires) $note .= "\n{$this->commentaires}";
 
-        $partenaire->ajouterNote($note);
+        $this->currentContact->ajouterNote($note);
     }
 
     protected function updateParticulier(): void
     {
-        $particulier = $this->currentContact;
-
-        $note = "[Appel du " . now()->format('d/m/Y H:i') . "] ";
+        $note  = "[Appel du " . now()->format('d/m/Y H:i') . "] ";
         $note .= match ($this->statut_resultat) {
-            'qualifie' => "✅ Contact qualifié - Intéressé",
-            'non_joignable' => "❌ Non joignable",
-            'rappel' => "🔄 Rappel à programmer",
-            'a_relancer' => "📞 À recontacter",
-            default => "Appel effectué",
+            'std_joint', 'rp', 'rpc' => "✅ Joint",
+            'std_nr', 'cse_nr'        => "❌ Non joignable",
+            'ko'                      => "🚫 KO",
+            default                   => "Appel",
         };
 
-        if ($this->commentaires) {
-            $note .= " - {$this->commentaires}";
-        }
+        if ($this->commentaires) $note .= " - {$this->commentaires}";
 
-        // Ajouter la note (vous pouvez ajouter un champ notes si nécessaire)
-        $particulier->update([
-            'notes' => $particulier->notes
-                ? $particulier->notes . "\n" . $note
+        $this->currentContact->update([
+            'notes' => $this->currentContact->notes
+                ? $this->currentContact->notes . "\n" . $note
                 : $note,
         ]);
     }
@@ -310,30 +330,37 @@ class PhoningWorkflow extends Page
         $prospect = $this->currentContact;
 
         $nouveauStatut = match ($this->statut_resultat) {
-            'qualifie' => ProspectStatut::RP, // Réponse positive
-            'non_joignable' => ProspectStatut::STD_NR, // Standard non référencé
-            'rappel' => ProspectStatut::AC, // À contacter (avec rappel)
-            'a_relancer' => ProspectStatut::AC, // À contacter
-            default => ProspectStatut::AC,
+            'rp'       => ProspectStatut::RP,
+            'rpc'      => ProspectStatut::RPC,
+            'std_joint'=> ProspectStatut::STD_Joint,
+            'std_nr'   => ProspectStatut::STD_NR,
+            'cse_nr'   => ProspectStatut::CSE_NR,
+            'ko'       => ProspectStatut::KO,
+            default    => ProspectStatut::AC,
         };
 
         $note = match ($this->statut_resultat) {
-            'qualifie' => "✅ Contact qualifié - Intéressé",
-            'non_joignable' => "❌ Non joignable après appel",
-            'rappel' => "🔄 Rappel à programmer",
-            'a_relancer' => "📞 À relancer ultérieurement",
-            default => "Appel effectué",
+            'rp'       => "✅ Réponse positive",
+            'rpc'      => "✅ Réponse positive CSE",
+            'std_joint'=> "📞 Standard joint",
+            'std_nr'   => "❌ Standard non référencé",
+            'cse_nr'   => "❌ CSE non référencé",
+            'ko'       => "🚫 KO - Refus",
+            default    => "Appel effectué",
         };
 
-        if ($this->commentaires) {
-            $note .= " - {$this->commentaires}";
+        if ($this->commentaires) $note .= " - {$this->commentaires}";
+
+        if ($nouveauStatut === ProspectStatut::KO) {
+            $prospect->marquerKO($note);
+        } else {
+            $prospect->changerStatut($nouveauStatut, $note);
         }
 
-        $prospect->changerStatut($nouveauStatut, $note);
         $prospect->marquerContact();
 
-        // Programmer le rappel si demandé
-        if ($this->statut_resultat === 'rappel' && $this->rappel_date) {
+        // Rappel programmé
+        if (in_array($this->statut_resultat, ['rp', 'rpc']) && $this->rappel_date) {
             try {
                 $rappelDateTime = \DateTime::createFromFormat(
                     'Y-m-d' . ($this->rappel_heure ? ' H:i' : ''),
@@ -343,33 +370,36 @@ class PhoningWorkflow extends Page
                     $prospect->programmerRappel($rappelDateTime);
                 }
             } catch (\Exception $e) {
-                // Log silencieusement les erreurs de date
+                // silent
             }
         }
     }
 
+    // ── Passer le contact ────────────────────────────────────────────
     public function skipCall(): void
     {
-        if (!$this->currentContact)
-            return;
+        if (! $this->currentContact) return;
 
         Notification::make()
             ->title('Contact ignoré')
-            ->body('Passé au suivant, ce contact reste à contacter')
+            ->body('Passé au suivant.')
             ->warning()
             ->send();
 
         $this->loadNextContact();
     }
 
+    // ── Helpers ──────────────────────────────────────────────────────
     protected function getResultLabel(): string
     {
         return match ($this->statut_resultat) {
-            'qualifie' => '✅ Qualifié',
-            'non_joignable' => '❌ Non joignable',
-            'rappel' => '🔄 Rappel programmé',
-            'a_relancer' => '📞 À relancer',
-            default => $this->statut_resultat,
+            'std_nr'    => '❌ STD-NR',
+            'std_joint' => '📞 STD-Joint',
+            'cse_nr'    => '🟠 CSE-NR',
+            'rp'        => '✅ RP – Rappel planifié',
+            'rpc'       => '⭐ RPC – RDV à planifier',
+            'ko'        => '🚫 KO',
+            default     => $this->statut_resultat,
         };
     }
 
@@ -379,54 +409,56 @@ class PhoningWorkflow extends Page
             Action::make('refresh')
                 ->label('Rafraîchir')
                 ->icon('heroicon-o-arrow-path')
-                ->action(fn() => $this->loadNextContact()),
+                ->action(fn () => $this->loadNextContact()),
         ];
     }
 
     public function getContactInfo(): array
     {
-        if (!$this->currentContact)
-            return [];
+        if (! $this->currentContact) return [];
 
         return match ($this->contactType) {
-            'artisan' => [
-                'nom' => $this->currentContact->nom,
-                'prenom' => null,
-                'telephone' => $this->currentContact->telephone,
-                'statut' => $this->currentContact->statut_campagne->label(),
+            'artisan'    => [
+                'nom'      => $this->currentContact->nom,
+                'prenom'   => null,
+                'telephone'=> $this->currentContact->telephone,
+                'statut'   => $this->currentContact->statut_campagne->label(),
                 'priorite' => $this->currentContact->priorite_segment->label(),
-                'metier' => $this->currentContact->corps_de_metier?->label(),
-                'email' => null,
+                'metier'   => $this->currentContact->corps_de_metier?->label(),
+                'email'    => null,
             ],
             'partenaire' => [
-                'nom' => $this->currentContact->nom,
-                'prenom' => $this->currentContact->prenom,
-                'telephone' => $this->currentContact->telephone_principal,
-                'statut' => $this->currentContact->est_principal ? 'Principal' : 'Contact',
+                'nom'      => $this->currentContact->nom,
+                'prenom'   => $this->currentContact->prenom,
+                'telephone'=> $this->currentContact->telephone_principal,
+                'statut'   => $this->currentContact->est_principal ? 'Principal' : 'Contact',
                 'priorite' => $this->currentContact->niveau_influence_label,
-                'metier' => $this->currentContact->fonction,
-                'email' => $this->currentContact->email ?? $this->currentContact->email_perso,
+                'metier'   => $this->currentContact->fonction,
+                'email'    => $this->currentContact->email ?? $this->currentContact->email_perso,
             ],
-            'particulier' => [
-                'nom' => $this->currentContact->nom,
-                'prenom' => $this->currentContact->prenom,
-                'telephone' => $this->currentContact->telephone,
-                'statut' => $this->currentContact->statut_occupant?->label() ?? 'Contact',
+            'particulier'=> [
+                'nom'      => $this->currentContact->nom,
+                'prenom'   => $this->currentContact->prenom,
+                'telephone'=> $this->currentContact->telephone,
+                'statut'   => $this->currentContact->statut_occupant?->label() ?? 'Contact',
                 'priorite' => $this->currentContact->type_logement?->label(),
-                'metier' => null,
-                'email' => $this->currentContact->email,
+                'metier'   => null,
+                'email'    => $this->currentContact->email,
             ],
-            'prospect' => [
-                'nom' => $this->currentContact->nom,
-                'prenom' => null,
-                'telephone' => $this->currentContact->telephone,
-                'telephone_alt' => $this->currentContact->telephone_alt,
-                'statut' => $this->currentContact->statut_label,
-                'priorite' => $this->currentContact->type_pressenti,
-                'metier' => $this->currentContact->secteur_activite,
-                'email' => $this->currentContact->email,
-                'adresse' => $this->currentContact->adresse_complete,
-                'interlocuteur' => $this->currentContact->interlocuteur_complet,
+            'prospect'   => [
+                'nom'          => $this->currentContact->nom,
+                'prenom'       => null,
+                'telephone'    => $this->currentContact->telephone,
+                'telephone_alt'=> $this->currentContact->telephone_alt,
+                'statut'       => $this->currentContact->statut_label,
+                'priorite'     => $this->currentContact->type_pressenti,
+                'metier'       => $this->currentContact->secteur_activite,
+                'email'        => $this->currentContact->email,
+                'adresse'      => $this->currentContact->adresse_complete,
+                'interlocuteur'=> $this->currentContact->interlocuteur_complet,
+                'ville'        => $this->currentContact->ville,
+                'code_postal'  => $this->currentContact->code_postal,
+                'siret'        => $this->currentContact->siret,
             ],
             default => [],
         };
