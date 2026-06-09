@@ -55,16 +55,18 @@ class AppelsRelationManager extends RelationManager
                     ->badge(),
                 Tables\Columns\TextColumn::make('user.nom')
                     ->label('Par')
-                    ->formatStateUsing(fn ($r) => $r->user
-                        ? "{$r->user->prenom} {$r->user->nom}"
-                        : '—'),
+                    ->formatStateUsing(function ($state, $record) {
+                        return $record->user
+                            ? "{$record->user->prenom} {$record->user->nom}"
+                            : '—';
+                    }),
                 Tables\Columns\TextColumn::make('commentaire')
                     ->limit(60),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
                     ->label('Enregistrer un appel')
-                    ->mutateFormDataUsing(fn (array $data) => array_merge($data, [
+                    ->mutateFormDataUsing(fn(array $data) => array_merge($data, [
                         'user_id' => auth()->id(),
                     ])),
             ]);

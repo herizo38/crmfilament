@@ -98,7 +98,8 @@ class PartenaireResource extends Resource
                     Forms\Components\Select::make('commercial_id')
                         ->label('Commercial assigné')
                         ->relationship(
-                            'commercial', 'nom',
+                            'commercial',
+                            'nom',
                             fn(Builder $query) => $query->whereIn('role_cache', ['commercial', 'team_leader', 'administrateur'])
                         )
                         ->getOptionLabelFromRecordUsing(fn(User $r) => "{$r->prenom} {$r->nom}")
@@ -204,13 +205,12 @@ class PartenaireResource extends Resource
                     ->label('Type')
                     ->badge()
                     // ✅ ->value sur l'enum, pas ->label()
-                    ->formatStateUsing(fn($state) => $state instanceof OrganizationType
-                        ? $state->value
-                        : OrganizationType::tryFrom((string) $state)?->value ?? $state
+                    ->formatStateUsing(
+                        fn($state) => $state instanceof OrganizationType
+                            ? $state->value
+                            : OrganizationType::tryFrom((string) $state)?->value ?? $state
                     )
-                    ->color(fn($state) => match (
-                        $state instanceof OrganizationType ? $state : OrganizationType::tryFrom((string) $state)
-                    ) {
+                    ->color(fn($state) => match ($state instanceof OrganizationType ? $state : OrganizationType::tryFrom((string) $state)) {
                         OrganizationType::CSE               => 'primary',
                         OrganizationType::Syndicat          => 'warning',
                         OrganizationType::EntrepriseDirecte => 'info',
@@ -225,13 +225,12 @@ class PartenaireResource extends Resource
                     ->label('Statut')
                     ->badge()
                     // ✅ ->value sur l'enum, pas ->label()
-                    ->formatStateUsing(fn($state) => $state instanceof OrganizationStatus
-                        ? $state->value
-                        : OrganizationStatus::tryFrom((string) $state)?->value ?? $state
+                    ->formatStateUsing(
+                        fn($state) => $state instanceof OrganizationStatus
+                            ? $state->value
+                            : OrganizationStatus::tryFrom((string) $state)?->value ?? $state
                     )
-                    ->color(fn($state) => match (
-                        $state instanceof OrganizationStatus ? $state : OrganizationStatus::tryFrom((string) $state)
-                    ) {
+                    ->color(fn($state) => match ($state instanceof OrganizationStatus ? $state : OrganizationStatus::tryFrom((string) $state)) {
                         OrganizationStatus::AProspecter          => 'gray',
                         OrganizationStatus::EnCoursProspection   => 'blue',
                         OrganizationStatus::RdvEnCours           => 'warning',
@@ -240,9 +239,7 @@ class PartenaireResource extends Resource
                         OrganizationStatus::Refus                => 'danger',
                         default                                  => 'gray',
                     })
-                    ->icon(fn($state) => match (
-                        $state instanceof OrganizationStatus ? $state : OrganizationStatus::tryFrom((string) $state)
-                    ) {
+                    ->icon(fn($state) => match ($state instanceof OrganizationStatus ? $state : OrganizationStatus::tryFrom((string) $state)) {
                         OrganizationStatus::AProspecter          => 'heroicon-o-queue-list',
                         OrganizationStatus::EnCoursProspection   => 'heroicon-o-phone',
                         OrganizationStatus::RdvEnCours           => 'heroicon-o-calendar',
@@ -283,9 +280,10 @@ class PartenaireResource extends Resource
                     ->label('Département')->searchable(),
                 Tables\Filters\Filter::make('rdv_90_jours')
                     ->label('⚠️ RDV > 90 jours')
-                    ->query(fn($query) => $query
-                        ->where('statut', OrganizationStatus::RdvEnCours->value)
-                        ->where('date_modification_statut', '<', now()->subDays(90))
+                    ->query(
+                        fn($query) => $query
+                            ->where('statut', OrganizationStatus::RdvEnCours->value)
+                            ->where('date_modification_statut', '<', now()->subDays(90))
                     )->toggle(),
                 Tables\Filters\Filter::make('convention_active')
                     ->label('Conventions signées')
@@ -319,11 +317,12 @@ class PartenaireResource extends Resource
                         ->form([
                             Forms\Components\Select::make('commercial_id')
                                 ->label('Commercial')
-                                ->options(fn() => User::whereIn('role_cache', ['commercial', 'team_leader'])
-                                    ->orderBy('nom')
-                                    ->get()
-                                    ->mapWithKeys(fn(User $u) => [$u->id => "{$u->prenom} {$u->nom}"])
-                                    ->toArray()
+                                ->options(
+                                    fn() => User::whereIn('role_cache', ['commercial', 'team_leader'])
+                                        ->orderBy('nom')
+                                        ->get()
+                                        ->mapWithKeys(fn(User $u) => [$u->id => "{$u->prenom} {$u->nom}"])
+                                        ->toArray()
                                 )
                                 ->required(),
                         ])
@@ -351,17 +350,17 @@ class PartenaireResource extends Resource
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
+
             Infolists\Components\Section::make('Identification')->schema([
                 Infolists\Components\TextEntry::make('nom')->label('Nom légal')->weight('bold'),
                 Infolists\Components\TextEntry::make('siret')->label('SIRET')->copyable(),
                 Infolists\Components\TextEntry::make('type')->label('Type')->badge()
-                    ->formatStateUsing(fn($state) => $state instanceof OrganizationType
-                        ? $state->value
-                        : OrganizationType::tryFrom((string) $state)?->value ?? $state
+                    ->formatStateUsing(
+                        fn($state) => $state instanceof OrganizationType
+                            ? $state->value
+                            : OrganizationType::tryFrom((string) $state)?->value ?? $state
                     )
-                    ->color(fn($state) => match (
-                        $state instanceof OrganizationType ? $state : OrganizationType::tryFrom((string) $state)
-                    ) {
+                    ->color(fn($state) => match ($state instanceof OrganizationType ? $state : OrganizationType::tryFrom((string) $state)) {
                         OrganizationType::CSE               => 'primary',
                         OrganizationType::Syndicat          => 'warning',
                         OrganizationType::EntrepriseDirecte => 'info',
@@ -369,13 +368,12 @@ class PartenaireResource extends Resource
                         default                             => 'gray',
                     }),
                 Infolists\Components\TextEntry::make('statut')->label('Statut')->badge()
-                    ->formatStateUsing(fn($state) => $state instanceof OrganizationStatus
-                        ? $state->value
-                        : OrganizationStatus::tryFrom((string) $state)?->value ?? $state
+                    ->formatStateUsing(
+                        fn($state) => $state instanceof OrganizationStatus
+                            ? $state->value
+                            : OrganizationStatus::tryFrom((string) $state)?->value ?? $state
                     )
-                    ->color(fn($state) => match (
-                        $state instanceof OrganizationStatus ? $state : OrganizationStatus::tryFrom((string) $state)
-                    ) {
+                    ->color(fn($state) => match ($state instanceof OrganizationStatus ? $state : OrganizationStatus::tryFrom((string) $state)) {
                         OrganizationStatus::AProspecter          => 'gray',
                         OrganizationStatus::EnCoursProspection   => 'blue',
                         OrganizationStatus::RdvEnCours           => 'warning',
@@ -399,16 +397,113 @@ class PartenaireResource extends Resource
                 Infolists\Components\TextEntry::make('origine_contact')->label('Origine'),
                 Infolists\Components\TextEntry::make('parrain_marraine')->label('Parrain / Marraine'),
                 Infolists\Components\TextEntry::make('nombre_ventes_liees')->label('Ventes liées'),
-                Infolists\Components\TextEntry::make('date_modification_statut')->label('Statut modifié le')->dateTime('d/m/Y à H:i'),
+                Infolists\Components\TextEntry::make('date_modification_statut')
+                    ->label('Statut modifié le')->dateTime('d/m/Y à H:i'),
             ])->columns(3),
 
             Infolists\Components\Section::make('Coordonnées')->schema([
-                Infolists\Components\TextEntry::make('telephone')->label('Téléphone'),
-                Infolists\Components\TextEntry::make('email')->label('Email')->copyable(),
-                Infolists\Components\TextEntry::make('adresse')->label('Adresse'),
-                Infolists\Components\TextEntry::make('ville')->label('Ville'),
-                Infolists\Components\TextEntry::make('code_postal')->label('CP'),
+                Infolists\Components\TextEntry::make('telephone')->label('Téléphone')->copyable()->placeholder('—'),
+                Infolists\Components\TextEntry::make('email')->label('Email')->copyable()->placeholder('—'),
+                Infolists\Components\TextEntry::make('adresse')->label('Adresse')->placeholder('—'),
+                Infolists\Components\TextEntry::make('ville')->label('Ville')->placeholder('—'),
+                Infolists\Components\TextEntry::make('code_postal')->label('CP')->placeholder('—'),
             ])->columns(3),
+
+            // ── Dirigeant ──────────────────────────────────────────────────
+            Infolists\Components\Section::make('Dirigeant')
+                ->icon('heroicon-o-user')
+                ->collapsible()->collapsed()
+                ->visible(fn(Partenaire $r) => $r->dirigeant_nom || $r->dirigeant_email || $r->dirigeant_telephone)
+                ->schema([
+                    Infolists\Components\Grid::make(3)->schema([
+                        Infolists\Components\TextEntry::make('dirigeant_nom')->label('Nom')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('dirigeant_prenom')->label('Prénom')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('dirigeant_fonction')->label('Fonction')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('dirigeant_telephone')
+                            ->label('Téléphone')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        Infolists\Components\TextEntry::make('dirigeant_email')
+                            ->label('Email')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+                    ]),
+                ]),
+
+            // ── CSE ────────────────────────────────────────────────────────
+            Infolists\Components\Section::make('Contacts CSE')
+                ->icon('heroicon-o-user-group')
+                ->collapsible()->collapsed()
+                ->visible(fn(Partenaire $r) => $r->type === OrganizationType::CSE)
+                ->schema([
+                    Infolists\Components\Grid::make(3)->schema([
+                        // Secrétaire
+                        Infolists\Components\TextEntry::make('cse_secretaire_nom')
+                            ->label('Secrétaire — Nom')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('cse_secretaire_prenom')
+                            ->label('Secrétaire — Prénom')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('cse_secretaire_tel_direct')
+                            ->label('Tél. direct')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        Infolists\Components\TextEntry::make('cse_secretaire_tel_perso')
+                            ->label('Tél. perso')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        Infolists\Components\TextEntry::make('cse_secretaire_email_pro')
+                            ->label('Email pro')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+                        Infolists\Components\TextEntry::make('cse_secretaire_email_perso')
+                            ->label('Email perso')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+
+                        // Trésorier
+                        Infolists\Components\TextEntry::make('cse_tresorier_nom')
+                            ->label('Trésorier — Nom')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('cse_tresorier_prenom')
+                            ->label('Trésorier — Prénom')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('cse_tresorier_tel_direct')
+                            ->label('Tél. direct')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        Infolists\Components\TextEntry::make('cse_tresorier_tel_perso')
+                            ->label('Tél. perso')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        Infolists\Components\TextEntry::make('cse_tresorier_email_pro')
+                            ->label('Email pro')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+                        Infolists\Components\TextEntry::make('cse_tresorier_email_perso')
+                            ->label('Email perso')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+
+                        // Infos CSE
+                        Infolists\Components\TextEntry::make('cse_nb_elus')
+                            ->label("Nombre d'élus")->placeholder('—')->suffix(' élus'),
+                        Infolists\Components\TextEntry::make('cse_date_fin_mandat')
+                            ->label('Fin de mandat')->date('d/m/Y')->placeholder('—'),
+                        Infolists\Components\IconEntry::make('cse_existence_juridique')
+                            ->label('Existence juridique')->boolean(),
+                        Infolists\Components\TextEntry::make('cse_notes')
+                            ->label('Notes CSE')->placeholder('—')->columnSpanFull()->prose(),
+                    ]),
+                ]),
+
+            // ── Syndicat ───────────────────────────────────────────────────
+            Infolists\Components\Section::make('Informations syndicales')
+                ->icon('heroicon-o-users')
+                ->collapsible()->collapsed()
+                ->visible(fn(Partenaire $r) => $r->type === OrganizationType::Syndicat)
+                ->schema([
+                    Infolists\Components\Grid::make(3)->schema([
+                        Infolists\Components\TextEntry::make('syndicat_appartenance')
+                            ->label('Appartenance')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('syndicat_nom_organisation')
+                            ->label('Organisation')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('syndicat_responsable_nom')
+                            ->label('Responsable — Nom')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('syndicat_responsable_prenom')
+                            ->label('Responsable — Prénom')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('syndicat_responsable_fonction')
+                            ->label('Fonction')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('syndicat_tel_direct')
+                            ->label('Tél. direct')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        Infolists\Components\TextEntry::make('syndicat_tel_perso')
+                            ->label('Tél. perso')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        Infolists\Components\TextEntry::make('syndicat_email_pro')
+                            ->label('Email pro')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+                        Infolists\Components\TextEntry::make('syndicat_email_perso')
+                            ->label('Email perso')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+                        Infolists\Components\TextEntry::make('syndicat_perimetre')
+                            ->label('Périmètre')->placeholder('—')->columnSpanFull()->prose(),
+                        Infolists\Components\TextEntry::make('syndicat_notes')
+                            ->label('Notes syndicat')->placeholder('—')->columnSpanFull()->prose(),
+                    ]),
+                ]),
 
             Infolists\Components\Section::make('Notes commerciales')->schema([
                 Infolists\Components\TextEntry::make('notes')->label('')->columnSpanFull()->html(),

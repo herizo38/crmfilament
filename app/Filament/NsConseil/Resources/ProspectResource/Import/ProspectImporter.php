@@ -52,7 +52,6 @@ class ProspectImporter
                     continue;
                 }
 
-                // Déduplication : téléphone principal OU (nom + département)
                 $telephone = $data['telephone'] ?? null;
                 if ($telephone) {
                     $prospect = Prospect::updateOrCreate(
@@ -109,47 +108,90 @@ class ProspectImporter
     protected function buildColumnMapping(array $headerRow): void
     {
         $fieldAliases = [
+            // ── Identification ──────────────────────────────────────
             'nom' => [
                 'nom', 'raison sociale', 'raison_sociale', 'entreprise',
-                'organisation', 'entite', 'entité'
+                'organisation', 'entite', 'entité',
             ],
             'type_pressenti' => [
-                'type', 'type pressenti', 'type_pressenti', 'categorie', 'catégorie'
+                'type', 'type pressenti', 'type_pressenti', 'categorie', 'catégorie',
             ],
-            'siret' => ['siret', 'n° siret', 'numero siret'],
-            'departement' => ['dpt', 'departement', 'département', 'dep'],
-            'code_postal' => ['cp', 'code postal', 'code_postal'],
-            'ville' => ['ville', 'commune'],
-            'adresse' => ['adresse', 'address'],
+            'siret'           => ['siret', 'n° siret', 'numero siret'],
+            'departement'     => ['dpt', 'departement', 'département', 'dep'],
+            'code_postal'     => ['cp', 'code postal', 'code_postal'],
+            'ville'           => ['ville', 'commune'],
+            'adresse'         => ['adresse', 'address'],
             'secteur_activite' => [
-                "secteur d'activité", "secteur d'activites", 'secteur_activite', 'secteur'
+                "secteur d'activité", "secteur d'activites", 'secteur_activite', 'secteur',
             ],
             'nb_salaries' => [
                 'nbrs de salariés', 'nb salariés', 'nb_salaries', 'salariés', 'effectif',
-                'nbr de salariés'
+                'nbr de salariés',
             ],
             'chiffre_affaires' => ['ca', "chiffre d'affaires", 'chiffre_affaires'],
+
+            // ── Coordonnées ─────────────────────────────────────────
             'telephone' => [
-                'téléphone', 'telephone', 'tel', 'tél', 'téléphone 1', 'telephone 1', 'tel 1'
+                'téléphone', 'telephone', 'tel', 'tél', 'téléphone 1', 'telephone 1', 'tel 1',
             ],
-            'telephone_alt' => ['téléphone 2', 'telephone 2', 'tel 2', 'tél 2'],
-            'email' => ['email', 'mail', 'e-mail'],
-            'interlocuteur_nom' => [
-                'interlocuteur', 'contact', 'interlocuteur nom', 'nom contact'
-            ],
-            'interlocuteur_fonction' => ['fonction', 'poste', 'titre'],
+            'telephone_alt'           => ['téléphone 2', 'telephone 2', 'tel 2', 'tél 2'],
+            'email'                   => ['email', 'mail', 'e-mail'],
+
+            // ── Interlocuteur ────────────────────────────────────────
+            'interlocuteur_nom'       => ['interlocuteur', 'contact', 'interlocuteur nom', 'nom contact'],
+            'interlocuteur_fonction'  => ['fonction', 'poste', 'titre'],
             'interlocuteur_telephone' => ['tel interlocuteur', 'tél interlocuteur'],
-            'interlocuteur_email' => ['email interlocuteur', 'mail interlocuteur'],
-            'statut' => ['statut', 'etat', 'état', 'situation'],
-            'teleprospecteur' => ['conseiller', 'téléprospecteur', 'teleprospecteur', 'agent'],
-            'rappel_planifie_at' => [
+            'interlocuteur_email'     => ['email interlocuteur', 'mail interlocuteur'],
+
+            // ── Pipeline ─────────────────────────────────────────────
+            'statut'              => ['statut', 'etat', 'état', 'situation'],
+            'teleprospecteur'     => ['conseiller', 'téléprospecteur', 'teleprospecteur', 'agent'],
+            'rappel_planifie_at'  => [
                 'rappel', 'date rappel', 'rappel planifié', 'date de rappel',
-                'date de 1er contact', 'date_contact', 'date'
+                'date de 1er contact', 'date_contact', 'date',
             ],
             'description' => [
                 'commentaire', 'commentaires', 'notes', 'description',
-                'commentaires/situation actuelle', 'situation actuelle'
+                'commentaires/situation actuelle', 'situation actuelle',
             ],
+
+            // ── Dirigeant ────────────────────────────────────────────
+            'dirigeant_nom'       => ['dirigeant nom', 'dirigeant_nom', 'nom dirigeant'],
+            'dirigeant_prenom'    => ['dirigeant prenom', 'dirigeant_prenom', 'prénom dirigeant'],
+            'dirigeant_fonction'  => ['dirigeant fonction', 'dirigeant_fonction', 'fonction dirigeant'],
+            'dirigeant_telephone' => ['dirigeant tel', 'dirigeant_telephone', 'tel dirigeant'],
+            'dirigeant_email'     => ['dirigeant email', 'dirigeant_email', 'email dirigeant'],
+
+            // ── CSE ──────────────────────────────────────────────────
+            'cse_secretaire_nom'         => ['secretaire nom', 'cse secretaire nom', 'nom secrétaire'],
+            'cse_secretaire_prenom'      => ['secretaire prenom', 'cse secretaire prenom', 'prénom secrétaire'],
+            'cse_secretaire_tel_direct'  => ['secretaire tel direct', 'cse secretaire tel', 'tel secrétaire'],
+            'cse_secretaire_tel_perso'   => ['secretaire tel perso', 'cse secretaire tel perso'],
+            'cse_secretaire_email_pro'   => ['secretaire email', 'cse secretaire email', 'email secrétaire'],
+            'cse_secretaire_email_perso' => ['secretaire email perso', 'cse secretaire email perso'],
+            'cse_tresorier_nom'          => ['tresorier nom', 'cse tresorier nom', 'nom trésorier'],
+            'cse_tresorier_prenom'       => ['tresorier prenom', 'cse tresorier prenom', 'prénom trésorier'],
+            'cse_tresorier_tel_direct'   => ['tresorier tel direct', 'cse tresorier tel', 'tel trésorier'],
+            'cse_tresorier_tel_perso'    => ['tresorier tel perso', 'cse tresorier tel perso'],
+            'cse_tresorier_email_pro'    => ['tresorier email', 'cse tresorier email', 'email trésorier'],
+            'cse_tresorier_email_perso'  => ['tresorier email perso', 'cse tresorier email perso'],
+            'cse_nb_elus'                => ['nb elus', 'cse nb elus', 'nombre élus'],
+            'cse_date_fin_mandat'        => ['fin mandat', 'cse fin mandat', 'date fin mandat'],
+            'cse_existence_juridique'    => ['existence juridique', 'cse existence juridique'],
+            'cse_notes'                  => ['notes cse', 'cse notes', 'commentaires cse'],
+
+            // ── Syndicat ─────────────────────────────────────────────
+            'syndicat_appartenance'         => ['appartenance syndicale', 'syndicat appartenance', 'syndicat'],
+            'syndicat_nom_organisation'     => ['syndicat nom', 'nom organisation syndicale'],
+            'syndicat_responsable_nom'      => ['responsable syndicat nom', 'syndicat responsable nom'],
+            'syndicat_responsable_prenom'   => ['responsable syndicat prenom', 'syndicat responsable prenom'],
+            'syndicat_responsable_fonction' => ['responsable syndicat fonction', 'syndicat responsable fonction'],
+            'syndicat_tel_direct'           => ['syndicat tel direct', 'tel syndicat'],
+            'syndicat_tel_perso'            => ['syndicat tel perso'],
+            'syndicat_email_pro'            => ['syndicat email', 'email syndicat'],
+            'syndicat_email_perso'          => ['syndicat email perso'],
+            'syndicat_perimetre'            => ['périmetre syndicat', 'syndicat perimetre', 'périmètre'],
+            'syndicat_notes'                => ['notes syndicat', 'syndicat notes', 'commentaires syndicat'],
         ];
 
         $normalizedHeader = array_map(
@@ -189,27 +231,73 @@ class ProspectImporter
         $teleprospecteurId = $this->resolveUserId($get('teleprospecteur'));
 
         $data = [
-            'nom'                      => $get('nom'),
-            'type_pressenti'           => $this->resolveType($get('type_pressenti')),
-            'siret'                    => $this->cleanSiret($get('siret')),
-            'departement'              => $departement,
-            'code_postal'              => $cp,
-            'ville'                    => $get('ville'),
-            'adresse'                  => $get('adresse'),
-            'secteur_activite'         => $get('secteur_activite') ?: ($this->defaults['secteur_activite'] ?? null),
-            'nb_salaries'              => $this->cleanInt($get('nb_salaries')),
-            'chiffre_affaires'         => $this->cleanDecimal($get('chiffre_affaires')),
-            'telephone'                => $this->cleanTelephone($get('telephone')),
-            'telephone_alt'            => $this->cleanTelephone($get('telephone_alt')),
-            'email'                    => $get('email'),
-            'interlocuteur_nom'        => $get('interlocuteur_nom'),
-            'interlocuteur_fonction'   => $get('interlocuteur_fonction'),
-            'interlocuteur_telephone'  => $this->cleanTelephone($get('interlocuteur_telephone')),
-            'interlocuteur_email'      => $get('interlocuteur_email'),
-            'statut'                   => $statut,
-            'teleprospecteur_id'       => $teleprospecteurId ?? ($this->defaults['teleprospecteur_id'] ?? null),
-            'rappel_planifie_at'       => $this->parseDate($get('rappel_planifie_at')),
-            'description'              => $get('description'),
+            // ── Identification ──────────────────────────────────────
+            'nom'              => $get('nom'),
+            'type_pressenti'   => $this->resolveType($get('type_pressenti'))
+                                    ?? ($this->defaults['type_pressenti'] ?? null),
+            'siret'            => $this->cleanSiret($get('siret')),
+            'departement'      => $departement,
+            'code_postal'      => $cp,
+            'ville'            => $get('ville'),
+            'adresse'          => $get('adresse'),
+            'secteur_activite' => $get('secteur_activite') ?: ($this->defaults['secteur_activite'] ?? null),
+            'nb_salaries'      => $this->cleanInt($get('nb_salaries')),
+            'chiffre_affaires' => $this->cleanDecimal($get('chiffre_affaires')),
+
+            // ── Coordonnées ─────────────────────────────────────────
+            'telephone'     => $this->cleanTelephone($get('telephone')),
+            'telephone_alt' => $this->cleanTelephone($get('telephone_alt')),
+            'email'         => $get('email'),
+
+            // ── Interlocuteur ────────────────────────────────────────
+            'interlocuteur_nom'       => $get('interlocuteur_nom'),
+            'interlocuteur_fonction'  => $get('interlocuteur_fonction'),
+            'interlocuteur_telephone' => $this->cleanTelephone($get('interlocuteur_telephone')),
+            'interlocuteur_email'     => $get('interlocuteur_email'),
+
+            // ── Pipeline ─────────────────────────────────────────────
+            'statut'             => $statut,
+            'teleprospecteur_id' => $teleprospecteurId ?? ($this->defaults['teleprospecteur_id'] ?? null),
+            'rappel_planifie_at' => $this->parseDate($get('rappel_planifie_at')),
+            'description'        => $get('description'),
+
+            // ── Dirigeant ────────────────────────────────────────────
+            'dirigeant_nom'       => $get('dirigeant_nom'),
+            'dirigeant_prenom'    => $get('dirigeant_prenom'),
+            'dirigeant_fonction'  => $get('dirigeant_fonction'),
+            'dirigeant_telephone' => $this->cleanTelephone($get('dirigeant_telephone')),
+            'dirigeant_email'     => $get('dirigeant_email'),
+
+            // ── CSE ──────────────────────────────────────────────────
+            'cse_secretaire_nom'         => $get('cse_secretaire_nom'),
+            'cse_secretaire_prenom'      => $get('cse_secretaire_prenom'),
+            'cse_secretaire_tel_direct'  => $this->cleanTelephone($get('cse_secretaire_tel_direct')),
+            'cse_secretaire_tel_perso'   => $this->cleanTelephone($get('cse_secretaire_tel_perso')),
+            'cse_secretaire_email_pro'   => $get('cse_secretaire_email_pro'),
+            'cse_secretaire_email_perso' => $get('cse_secretaire_email_perso'),
+            'cse_tresorier_nom'          => $get('cse_tresorier_nom'),
+            'cse_tresorier_prenom'       => $get('cse_tresorier_prenom'),
+            'cse_tresorier_tel_direct'   => $this->cleanTelephone($get('cse_tresorier_tel_direct')),
+            'cse_tresorier_tel_perso'    => $this->cleanTelephone($get('cse_tresorier_tel_perso')),
+            'cse_tresorier_email_pro'    => $get('cse_tresorier_email_pro'),
+            'cse_tresorier_email_perso'  => $get('cse_tresorier_email_perso'),
+            'cse_nb_elus'                => $this->cleanInt($get('cse_nb_elus')),
+            'cse_date_fin_mandat'        => $this->parseDate($get('cse_date_fin_mandat')),
+            'cse_existence_juridique'    => $this->cleanBool($get('cse_existence_juridique')),
+            'cse_notes'                  => $get('cse_notes'),
+
+            // ── Syndicat ─────────────────────────────────────────────
+            'syndicat_appartenance'         => $get('syndicat_appartenance'),
+            'syndicat_nom_organisation'     => $get('syndicat_nom_organisation'),
+            'syndicat_responsable_nom'      => $get('syndicat_responsable_nom'),
+            'syndicat_responsable_prenom'   => $get('syndicat_responsable_prenom'),
+            'syndicat_responsable_fonction' => $get('syndicat_responsable_fonction'),
+            'syndicat_tel_direct'           => $this->cleanTelephone($get('syndicat_tel_direct')),
+            'syndicat_tel_perso'            => $this->cleanTelephone($get('syndicat_tel_perso')),
+            'syndicat_email_pro'            => $get('syndicat_email_pro'),
+            'syndicat_email_perso'          => $get('syndicat_email_perso'),
+            'syndicat_perimetre'            => $get('syndicat_perimetre'),
+            'syndicat_notes'                => $get('syndicat_notes'),
         ];
 
         return array_filter($data, fn($v) => $v !== null && $v !== '');
@@ -339,6 +427,16 @@ class ProspectImporter
         $clean = str_replace(',', '.', $clean);
         $clean = preg_replace('/[^\d.]/', '', $clean);
         return is_numeric($clean) ? $clean : null;
+    }
+
+    // ── Nouveau : nettoyage booléen ───────────────────────────────────
+    protected function cleanBool(mixed $value): ?bool
+    {
+        if ($value === null || $value === '') return null;
+        $lower = mb_strtolower(trim((string) $value));
+        if (in_array($lower, ['1', 'oui', 'yes', 'true', 'vrai'])) return true;
+        if (in_array($lower, ['0', 'non', 'no', 'false', 'faux'])) return false;
+        return null;
     }
 
     protected function getResult(): array

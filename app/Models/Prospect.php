@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OrganizationStatus;
 use App\Enums\ProspectStatut;
 use App\Enums\OrganizationType;
 use Illuminate\Database\Eloquent\Model;
@@ -53,6 +54,43 @@ class Prospect extends Model
         'qf_valide',
         'valide_par',
         'qf_valide_at',
+        // Infos CSE
+        'cse_secretaire_nom',
+        'cse_secretaire_prenom',
+        'cse_secretaire_tel_direct',
+        'cse_secretaire_tel_perso',
+        'cse_secretaire_email_pro',
+        'cse_secretaire_email_perso',
+        'cse_tresorier_nom',
+        'cse_tresorier_prenom',
+        'cse_tresorier_tel_direct',
+        'cse_tresorier_tel_perso',
+        'cse_tresorier_email_pro',
+        'cse_tresorier_email_perso',
+        'cse_nb_elus',
+        'cse_date_fin_mandat',
+        'cse_existence_juridique',
+        'cse_notes',
+        // Infos Syndicat
+        'syndicat_appartenance',
+        'syndicat_nom_organisation',
+        'syndicat_responsable_nom',
+        'syndicat_responsable_prenom',
+        'syndicat_responsable_fonction',
+        'syndicat_tel_direct',
+        'syndicat_tel_perso',
+        'syndicat_email_pro',
+        'syndicat_email_perso',
+        'syndicat_perimetre',
+        'syndicat_notes',
+        // ── Dirigeant (commun à tous les types) ─────────────────────────
+        'dirigeant_nom',
+        'dirigeant_prenom',
+        'dirigeant_fonction',
+        'dirigeant_telephone',
+        'dirigeant_email',
+
+        'ordre_priorite'
     ];
 
     // ── Accesseurs ──────────────────────────────────────────────────
@@ -294,43 +332,7 @@ class Prospect extends Model
         ]);
     }
 
-    public function convertirEnPartenaire(): ?Partenaire
-    {
-        if (!$this->estQualifie) {
-            throw new \Exception("Seuls les prospects qualifiés (QF) peuvent être convertis");
-        }
 
-        DB::beginTransaction();
-        try {
-            $partenaire = Partenaire::create([
-                'nom' => $this->nom,
-                'type' => $this->type_pressenti ?? OrganizationType::EntrepriseDirecte->value,
-                'siret' => $this->siret,
-                'telephone' => $this->telephone,
-                'email' => $this->email,
-                'adresse' => $this->adresse,
-                'code_postal' => $this->code_postal,
-                'ville' => $this->ville,
-                'departement' => $this->departement,
-                'secteur_activite' => $this->secteur_activite,
-                'nb_salaries' => $this->nb_salaries,
-                'chiffre_affaires' => $this->chiffre_affaires,
-                'statut' => 'a_prospecter',
-                'notes' => "Converti depuis prospect #{$this->id}\n{$this->description}",
-            ]);
-
-            $this->update([
-                'statut' => ProspectStatut::QF,
-                'description' => $this->description . "\n[Conversion] Partenaire créé le " . now()->format('d/m/Y H:i'),
-            ]);
-
-            DB::commit();
-            return $partenaire;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
-    }
 
     // ── Scopes ──────────────────────────────────────────────────────
     public function scopeActifs($query): Builder
@@ -542,6 +544,83 @@ class Prospect extends Model
                 $prospect->date_premier_contact = now();
             }
         });
+    }
+
+    public function convertirEnPartenaire(): ?Partenaire
+    {
+        if (!$this->estQualifie) {
+            throw new \Exception("Seuls les prospects qualifiés (QF) peuvent être convertis");
+        }
+
+        DB::beginTransaction();
+        try {
+            $partenaire = Partenaire::create([
+                // Infos de base
+                'nom'                => $this->nom,
+                'type'               => $this->type_pressenti ?? OrganizationType::EntrepriseDirecte->value,
+                'siret'              => $this->siret,
+                'telephone'          => $this->telephone,
+                'email'              => $this->email,
+                'adresse'            => $this->adresse,
+                'code_postal'        => $this->code_postal,
+                'ville'              => $this->ville,
+                'departement'        => $this->departement,
+                'secteur_activite'   => $this->secteur_activite,
+                'nb_salaries'        => $this->nb_salaries,
+                'chiffre_affaires'   => $this->chiffre_affaires,
+                'commercial_id'      => $this->commercial_id,
+                'statut'             => OrganizationStatus::AProspecter,
+                'notes'              => "Converti depuis prospect #{$this->id}\n{$this->description}",
+
+                // Dirigeant
+                'dirigeant_nom'       => $this->dirigeant_nom,
+                'dirigeant_prenom'    => $this->dirigeant_prenom,
+                'dirigeant_fonction'  => $this->dirigeant_fonction,
+                'dirigeant_telephone' => $this->dirigeant_telephone,
+                'dirigeant_email'     => $this->dirigeant_email,
+
+                // CSE
+                'cse_secretaire_nom'        => $this->cse_secretaire_nom,
+                'cse_secretaire_prenom'     => $this->cse_secretaire_prenom,
+                'cse_secretaire_tel_direct' => $this->cse_secretaire_tel_direct,
+                'cse_secretaire_tel_perso'  => $this->cse_secretaire_tel_perso,
+                'cse_secretaire_email_pro'  => $this->cse_secretaire_email_pro,
+                'cse_secretaire_email_perso' => $this->cse_secretaire_email_perso,
+                'cse_tresorier_nom'         => $this->cse_tresorier_nom,
+                'cse_tresorier_prenom'      => $this->cse_tresorier_prenom,
+                'cse_tresorier_tel_direct'  => $this->cse_tresorier_tel_direct,
+                'cse_tresorier_tel_perso'   => $this->cse_tresorier_tel_perso,
+                'cse_tresorier_email_pro'   => $this->cse_tresorier_email_pro,
+                'cse_tresorier_email_perso' => $this->cse_tresorier_email_perso,
+                'cse_nb_elus'               => $this->cse_nb_elus,
+                'cse_date_fin_mandat'       => $this->cse_date_fin_mandat,
+                'cse_existence_juridique'   => $this->cse_existence_juridique,
+                'cse_notes'                 => $this->cse_notes,
+
+                // Syndicat
+                'syndicat_appartenance'          => $this->syndicat_appartenance,
+                'syndicat_nom_organisation'      => $this->syndicat_nom_organisation,
+                'syndicat_responsable_nom'       => $this->syndicat_responsable_nom,
+                'syndicat_responsable_prenom'    => $this->syndicat_responsable_prenom,
+                'syndicat_responsable_fonction'  => $this->syndicat_responsable_fonction,
+                'syndicat_tel_direct'            => $this->syndicat_tel_direct,
+                'syndicat_tel_perso'             => $this->syndicat_tel_perso,
+                'syndicat_email_pro'             => $this->syndicat_email_pro,
+                'syndicat_email_perso'           => $this->syndicat_email_perso,
+                'syndicat_perimetre'             => $this->syndicat_perimetre,
+                'syndicat_notes'                 => $this->syndicat_notes,
+            ]);
+
+            $this->update([
+                'description' => $this->description . "\n[Conversion] Partenaire créé le " . now()->format('d/m/Y H:i'),
+            ]);
+
+            DB::commit();
+            return $partenaire;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     // ── Relations ────────────────────────────────────────────────────

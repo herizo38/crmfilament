@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use App\Enums\ProspectStatut;
+
 return new class extends Migration
 {
     /**
@@ -40,6 +41,43 @@ return new class extends Migration
             $table->boolean('qf_valide')->default(false);
             $table->foreignId('valide_par')->nullable()->constrained('users')->nullOnDelete();
             $table->dateTime('qf_valide_at')->nullable();
+            // ── Informations CSE (si type_pressenti = CSE) ──────────────────
+            $table->string('cse_secretaire_nom')->nullable();
+            $table->string('cse_secretaire_prenom')->nullable();
+            $table->string('cse_secretaire_tel_direct')->nullable();
+            $table->string('cse_secretaire_tel_perso')->nullable();
+            $table->string('cse_secretaire_email_pro')->nullable();
+            $table->string('cse_secretaire_email_perso')->nullable();
+            $table->string('cse_tresorier_nom')->nullable();
+            $table->string('cse_tresorier_prenom')->nullable();
+            $table->string('cse_tresorier_tel_direct')->nullable();
+            $table->string('cse_tresorier_tel_perso')->nullable();
+            $table->string('cse_tresorier_email_pro')->nullable();
+            $table->string('cse_tresorier_email_perso')->nullable();
+            $table->integer('cse_nb_elus')->nullable();
+            $table->date('cse_date_fin_mandat')->nullable();
+            $table->boolean('cse_existence_juridique')->default(false);
+            $table->text('cse_notes')->nullable();
+
+            // ── Informations Syndicat (si type_pressenti = Syndicat) ────────
+            $table->string('syndicat_appartenance')->nullable();
+            $table->string('syndicat_nom_organisation')->nullable();
+            $table->string('syndicat_responsable_nom')->nullable();
+            $table->string('syndicat_responsable_prenom')->nullable();
+            $table->string('syndicat_responsable_fonction')->nullable();
+            $table->string('syndicat_tel_direct')->nullable();
+            $table->string('syndicat_tel_perso')->nullable();
+            $table->string('syndicat_email_pro')->nullable();
+            $table->string('syndicat_email_perso')->nullable();
+            $table->text('syndicat_perimetre')->nullable();
+            $table->text('syndicat_notes')->nullable();
+
+            // ── Dirigeant (commun à tous les types) ─────────────────────────
+            $table->string('dirigeant_nom')->nullable();
+            $table->string('dirigeant_prenom')->nullable();
+            $table->string('dirigeant_fonction')->nullable();
+            $table->string('dirigeant_telephone')->nullable();
+            $table->string('dirigeant_email')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

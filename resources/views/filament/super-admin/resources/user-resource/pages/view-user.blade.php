@@ -139,7 +139,7 @@
 .vu-filter-input:focus { border-color: rgb(59 130 246); box-shadow: 0 0 0 2px rgb(59 130 246 / 0.2); }
 .vu-filter-select {
     padding: 0.375rem 0.75rem; border: 1px solid rgb(209 213 219);
-    border-radius: 0.5rem; font-size: 0.8125rem; background: white;
+    border-radius: 0.5rem; font-size: 0.8125rem;
     color: inherit; outline: none; cursor: pointer;
 }
 .dark .vu-filter-select { background: rgb(17 24 39); border-color: rgb(55 65 81); }

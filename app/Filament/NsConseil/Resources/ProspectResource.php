@@ -65,7 +65,8 @@ class ProspectResource extends Resource
 
                     Forms\Components\Select::make('type_pressenti')
                         ->label('Type pressenti')
-                        ->options(OrganizationType::class),
+                        ->options(OrganizationType::class)
+                        ->live(),
 
                     Forms\Components\TextInput::make('siret')
                         ->label('SIRET')
@@ -173,6 +174,81 @@ class ProspectResource extends Resource
                         ->rows(2)
                         ->visible(fn(Get $get) => $get('statut') === ProspectStatut::KO->value),
                 ]),
+            Forms\Components\Section::make('Dirigeant')
+                ->icon('heroicon-o-user-circle')
+                ->collapsible()
+                ->collapsed()
+                ->schema([
+                    Forms\Components\TextInput::make('dirigeant_nom')
+                        ->label('Nom'),
+                    Forms\Components\TextInput::make('dirigeant_prenom')
+                        ->label('Prénom'),
+                    Forms\Components\TextInput::make('dirigeant_fonction')
+                        ->label('Fonction'),
+                    Forms\Components\TextInput::make('dirigeant_telephone')
+                        ->label('Téléphone')
+                        ->tel(),
+                    Forms\Components\TextInput::make('dirigeant_email')
+                        ->label('Email')
+                        ->email(),
+                ])->columns(3),
+
+            Forms\Components\Section::make('Informations CSE')
+                ->icon('heroicon-o-building-office')
+                ->collapsible()
+                ->collapsed()
+                ->visible(fn(Get $get) => $get('type_pressenti') === \App\Enums\OrganizationType::CSE->value)
+                ->schema([
+                    Forms\Components\TextInput::make('cse_secretaire_nom')->label('Secrétaire — Nom'),
+                    Forms\Components\TextInput::make('cse_secretaire_prenom')->label('Secrétaire — Prénom'),
+                    Forms\Components\TextInput::make('cse_secretaire_tel_direct')->label('Tél. direct')->tel(),
+                    Forms\Components\TextInput::make('cse_secretaire_tel_perso')->label('Tél. perso')->tel(),
+                    Forms\Components\TextInput::make('cse_secretaire_email_pro')->label('Email pro')->email(),
+                    Forms\Components\TextInput::make('cse_secretaire_email_perso')->label('Email perso')->email(),
+
+                    Forms\Components\TextInput::make('cse_tresorier_nom')->label('Trésorier — Nom'),
+                    Forms\Components\TextInput::make('cse_tresorier_prenom')->label('Trésorier — Prénom'),
+                    Forms\Components\TextInput::make('cse_tresorier_tel_direct')->label('Tél. direct')->tel(),
+                    Forms\Components\TextInput::make('cse_tresorier_tel_perso')->label('Tél. perso')->tel(),
+                    Forms\Components\TextInput::make('cse_tresorier_email_pro')->label('Email pro')->email(),
+                    Forms\Components\TextInput::make('cse_tresorier_email_perso')->label('Email perso')->email(),
+
+                    Forms\Components\TextInput::make('cse_nb_elus')->label('Nombre d\'élus')->numeric(),
+                    Forms\Components\DatePicker::make('cse_date_fin_mandat')
+                        ->label('Fin de mandat')
+                        ->displayFormat('d/m/Y'),
+                    Forms\Components\Toggle::make('cse_existence_juridique')
+                        ->label('Existence juridique propre'),
+                    Forms\Components\Textarea::make('cse_notes')
+                        ->label('Notes CSE')
+                        ->rows(2)
+                        ->columnSpanFull(),
+                ])->columns(3),
+
+            Forms\Components\Section::make('Informations Syndicat')
+                ->icon('heroicon-o-user-group')
+                ->collapsible()
+                ->collapsed()
+                ->visible(fn(Get $get) => $get('type_pressenti') === \App\Enums\OrganizationType::Syndicat->value)
+                ->schema([
+                    Forms\Components\TextInput::make('syndicat_appartenance')->label('Appartenance syndicale'),
+                    Forms\Components\TextInput::make('syndicat_nom_organisation')->label('Nom organisation'),
+                    Forms\Components\TextInput::make('syndicat_responsable_nom')->label('Responsable — Nom'),
+                    Forms\Components\TextInput::make('syndicat_responsable_prenom')->label('Responsable — Prénom'),
+                    Forms\Components\TextInput::make('syndicat_responsable_fonction')->label('Fonction'),
+                    Forms\Components\TextInput::make('syndicat_tel_direct')->label('Tél. direct')->tel(),
+                    Forms\Components\TextInput::make('syndicat_tel_perso')->label('Tél. perso')->tel(),
+                    Forms\Components\TextInput::make('syndicat_email_pro')->label('Email pro')->email(),
+                    Forms\Components\TextInput::make('syndicat_email_perso')->label('Email perso')->email(),
+                    Forms\Components\Textarea::make('syndicat_perimetre')
+                        ->label('Périmètre')
+                        ->rows(2)
+                        ->columnSpanFull(),
+                    Forms\Components\Textarea::make('syndicat_notes')
+                        ->label('Notes')
+                        ->rows(2)
+                        ->columnSpanFull(),
+                ])->columns(3),
         ]);
     }
 
@@ -589,7 +665,101 @@ class ProspectResource extends Resource
                         ->placeholder('Aucun motif enregistré')
                         ->prose(),
                 ]),
+            // ── Section : Dirigeant ──
+            Section::make('Dirigeant')
+                ->icon('heroicon-o-user-circle')
+                ->collapsible()
+                ->collapsed()
+                ->visible(fn(Prospect $r) => $r->dirigeant_nom || $r->dirigeant_email || $r->dirigeant_telephone)
+                ->schema([
+                    Grid::make(3)->schema([
+                        TextEntry::make('dirigeant_nom')->label('Nom')->placeholder('—'),
+                        TextEntry::make('dirigeant_prenom')->label('Prénom')->placeholder('—'),
+                        TextEntry::make('dirigeant_fonction')->label('Fonction')->placeholder('—'),
+                        TextEntry::make('dirigeant_telephone')
+                            ->label('Téléphone')
+                            ->copyable()
+                            ->placeholder('—')
+                            ->icon('heroicon-m-phone'),
+                        TextEntry::make('dirigeant_email')
+                            ->label('Email')
+                            ->copyable()
+                            ->placeholder('—')
+                            ->icon('heroicon-m-envelope'),
+                    ]),
+                ]),
 
+            // ── Section : CSE ──
+            Section::make('Informations CSE')
+                ->icon('heroicon-o-building-office')
+                ->collapsible()
+                ->collapsed()
+                ->visible(fn(Prospect $r) => $r->type_pressenti === \App\Enums\OrganizationType::CSE->value)
+                ->schema([
+                    Grid::make(3)->schema([
+                        TextEntry::make('cse_secretaire_nom')->label('Secrétaire — Nom')->placeholder('—'),
+                        TextEntry::make('cse_secretaire_prenom')->label('Secrétaire — Prénom')->placeholder('—'),
+                        TextEntry::make('cse_secretaire_tel_direct')
+                            ->label('Tél. direct')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        TextEntry::make('cse_secretaire_tel_perso')
+                            ->label('Tél. perso')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        TextEntry::make('cse_secretaire_email_pro')
+                            ->label('Email pro')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+                        TextEntry::make('cse_secretaire_email_perso')
+                            ->label('Email perso')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+
+                        TextEntry::make('cse_tresorier_nom')->label('Trésorier — Nom')->placeholder('—'),
+                        TextEntry::make('cse_tresorier_prenom')->label('Trésorier — Prénom')->placeholder('—'),
+                        TextEntry::make('cse_tresorier_tel_direct')
+                            ->label('Tél. direct')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        TextEntry::make('cse_tresorier_tel_perso')
+                            ->label('Tél. perso')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        TextEntry::make('cse_tresorier_email_pro')
+                            ->label('Email pro')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+                        TextEntry::make('cse_tresorier_email_perso')
+                            ->label('Email perso')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+
+                        TextEntry::make('cse_nb_elus')->label('Nombre d\'élus')->placeholder('—')->suffix(' élus'),
+                        TextEntry::make('cse_date_fin_mandat')
+                            ->label('Fin de mandat')->date('d/m/Y')->placeholder('—'),
+                        \Filament\Infolists\Components\IconEntry::make('cse_existence_juridique')
+                            ->label('Existence juridique')
+                            ->boolean(),
+                        TextEntry::make('cse_notes')
+                            ->label('Notes CSE')
+                            ->placeholder('—')
+                            ->columnSpanFull()
+                            ->prose(),
+                    ]),
+                ]),
+
+            // ── Section : Syndicat ──
+            Section::make('Informations Syndicat')
+                ->icon('heroicon-o-user-group')
+                ->collapsible()
+                ->collapsed()
+                ->visible(fn(Prospect $r) => $r->type_pressenti === \App\Enums\OrganizationType::Syndicat->value)
+                ->schema([
+                    Grid::make(3)->schema([
+                        TextEntry::make('syndicat_appartenance')->label('Appartenance')->placeholder('—'),
+                        TextEntry::make('syndicat_nom_organisation')->label('Organisation')->placeholder('—'),
+                        TextEntry::make('syndicat_responsable_nom')->label('Responsable — Nom')->placeholder('—'),
+                        TextEntry::make('syndicat_responsable_prenom')->label('Responsable — Prénom')->placeholder('—'),
+                        TextEntry::make('syndicat_responsable_fonction')->label('Fonction')->placeholder('—'),
+                        TextEntry::make('syndicat_tel_direct')
+                            ->label('Tél. direct')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        TextEntry::make('syndicat_tel_perso')
+                            ->label('Tél. perso')->copyable()->placeholder('—')->icon('heroicon-m-phone'),
+                        TextEntry::make('syndicat_email_pro')
+                            ->label('Email pro')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+                        TextEntry::make('syndicat_email_perso')
+                            ->label('Email perso')->copyable()->placeholder('—')->icon('heroicon-m-envelope'),
+                        TextEntry::make('syndicat_perimetre')
+                            ->label('Périmètre')->placeholder('—')->columnSpanFull()->prose(),
+                        TextEntry::make('syndicat_notes')
+                            ->label('Notes')->placeholder('—')->columnSpanFull()->prose(),
+                    ]),
+                ]),
             // ── Section 7 : Notes / Description ──
             Section::make('Notes & Historique')
                 ->icon('heroicon-o-document-text')

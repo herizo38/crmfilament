@@ -20,7 +20,7 @@ class PhoningBackOffice extends Page
 
     public ?int   $selectedUserId   = null;
     public array  $prospectList     = [];
-
+    public array $selectedIds = [];
     // ── Filtres ──────────────────────────────────────────────────────
     public string  $filterStatut     = '';
     public string  $filterDept       = '';
@@ -41,8 +41,8 @@ class PhoningBackOffice extends Page
     {
         return User::query()
             ->where(function ($q) {
-                $q->whereHas('roles', fn ($r) => $r->where('name', User::ROLE_TELEPROSPECTEUR))
-                  ->orWhere('role_cache', User::ROLE_TELEPROSPECTEUR);
+                $q->whereHas('roles', fn($r) => $r->where('name', User::ROLE_TELEPROSPECTEUR))
+                    ->orWhere('role_cache', User::ROLE_TELEPROSPECTEUR);
             })
             ->where('actif', true)
             ->orderBy('nom')
@@ -82,8 +82,8 @@ class PhoningBackOffice extends Page
                 ->keyBy('id');
 
             $ordered = collect($ids)
-                ->filter(fn ($id) => $prospects->has($id))
-                ->map(fn ($id) => $this->formatProspect($prospects[$id]))
+                ->filter(fn($id) => $prospects->has($id))
+                ->map(fn($id) => $this->formatProspect($prospects[$id]))
                 ->values();
         } else {
             $ordered = Prospect::query()
@@ -100,7 +100,7 @@ class PhoningBackOffice extends Page
                     ELSE 7 END")
                 ->orderBy('rappel_planifie_at', 'asc')
                 ->get()
-                ->map(fn ($p) => $this->formatProspect($p));
+                ->map(fn($p) => $this->formatProspect($p));
         }
 
         $this->prospectList = $this->applyFiltersToCollection($ordered)->toArray();
@@ -120,7 +120,7 @@ class PhoningBackOffice extends Page
             })->values();
         }
         if ($this->filterRappelOnly) {
-            $col = $col->filter(fn ($p) => ! empty($p['rappel_planifie_at']))->values();
+            $col = $col->filter(fn($p) => ! empty($p['rappel_planifie_at']))->values();
         }
         return $col;
     }
@@ -169,8 +169,8 @@ class PhoningBackOffice extends Page
         if (empty($orderedIds) || ! $this->selectedUserId) return;
         $indexed            = collect($this->prospectList)->keyBy('id');
         $this->prospectList = collect($orderedIds)
-            ->filter(fn ($id) => $indexed->has($id))
-            ->map(fn ($id) => $indexed[$id])
+            ->filter(fn($id) => $indexed->has($id))
+            ->map(fn($id) => $indexed[$id])
             ->values()
             ->toArray();
         $this->saveQueue();
@@ -228,7 +228,7 @@ class PhoningBackOffice extends Page
     {
         if (! $this->selectedUserId) return;
         $queue = collect($this->prospectList)
-            ->map(fn ($p) => ['type' => 'prospect', 'id' => $p['id']])
+            ->map(fn($p) => ['type' => 'prospect', 'id' => $p['id']])
             ->toArray();
         Cache::put("phoning_queue_user_{$this->selectedUserId}", $queue, now()->addHours(24));
     }
@@ -246,7 +246,7 @@ class PhoningBackOffice extends Page
     {
         return $this->queryTeleprospecteurs()
             ->get()
-            ->map(fn ($u) => [
+            ->map(fn($u) => [
                 'id'          => $u->id,
                 'nom_complet' => trim("{$u->prenom} {$u->nom}"),
                 'initiales'   => $u->initiales,
@@ -271,6 +271,61 @@ class PhoningBackOffice extends Page
         ];
     }
 
+    public function moveSelectedToTop(): void
+    {
+        if (empty($this->selectedIds)) {
+            Notification::make()->title('Aucun prospect sélectionné')->warning()->send();
+            return;
+        }
+
+        $selected   = [];
+        $remaining  = [];
+
+        foreach ($this->prospectList as $p) {
+            if (in_array($p['id'], $this->selectedIds)) {
+                $selected[] = $p;
+            } else {
+                $remaining[] = $p;
+            }
+        }
+
+        // Les sélectionnés en tête, dans leur ordre relatif actuel
+        $this->prospectList = array_merge($selected, $remaining);
+        $this->selectedIds  = [];
+        $this->saveQueue();
+
+        Notification::make()
+            ->title(count($selected) . ' prospect(s) mis en tête ✓')
+            ->success()
+            ->send();
+    }
+
+    public function removeSelected(): void
+    {
+        if (empty($this->selectedIds)) {
+            Notification::make()->title('Aucun prospect sélectionné')->warning()->send();
+            return;
+        }
+
+        $count = count($this->selectedIds);
+
+        $this->prospectList = array_values(
+            array_filter(
+                $this->prospectList,
+                fn($p) => ! in_array($p['id'], $this->selectedIds)
+            )
+        );
+
+        $this->selectedIds = [];
+        $this->saveQueue();
+
+        Notification::make()
+            ->title("{$count} prospect(s) retirés de la file ✓")
+            ->body('La file a été sauvegardée. Les prospects restent dans la base.')
+            ->warning()
+            ->send();
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -278,7 +333,7 @@ class PhoningBackOffice extends Page
                 ->label('→ Workflow d\'appels')
                 ->icon('heroicon-o-phone-arrow-up-right')
                 ->color('success')
-                ->url(fn () => route('filament.ns-conseil.pages.phoning-workflow')),
+                ->url(fn() => route('filament.ns-conseil.pages.phoning-workflow')),
 
             Action::make('reset_order')
                 ->label('Réinitialiser l\'ordre')
@@ -287,7 +342,7 @@ class PhoningBackOffice extends Page
                 ->requiresConfirmation()
                 ->modalHeading('Réinitialiser l\'ordre ?')
                 ->modalDescription('L\'ordre par défaut (par statut et rappel) sera restauré.')
-                ->action(fn () => $this->resetOrder()),
+                ->action(fn() => $this->resetOrder()),
         ];
     }
 }
