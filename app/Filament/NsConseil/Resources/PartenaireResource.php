@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\NsConseil\Resources;
 
 use App\Enums\OrganizationStatus;
@@ -306,17 +305,21 @@ class PartenaireResource extends Resource
                 Tables\Filters\Filter::make('rdv_90_jours')
                     ->label('⚠️ RDV > 90 jours')
                     ->query(
-                        fn($query) => $query
+                        fn (Builder $query): Builder => $query
                             ->where('statut', OrganizationStatus::RdvEnCours->value)
                             ->where('date_modification_statut', '<', now()->subDays(90))
-                    )->toggle(),
+                    )
+                    ->toggle(),
 
                 Tables\Filters\Filter::make('convention_active')
                     ->label('Conventions signées')
-                    ->query(fn($q) => $q->whereIn('statut', [
-                        OrganizationStatus::SigneAccordCadre->value,
-                        OrganizationStatus::ConventionEngagement->value,
-                    ]))->toggle(),
+                    ->query(
+                        fn (Builder $query): Builder => $query->whereIn('statut', [
+                            OrganizationStatus::SigneAccordCadre->value,
+                            OrganizationStatus::ConventionEngagement->value,
+                        ])
+                    )
+                    ->toggle(),
 
                 Tables\Filters\TrashedFilter::make(),
             ])
