@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logigramme Prospection CSE — v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700&display=swap');
+
+  :root {
+    --purple:   #6C5CE7;
+    --purple-l: #EDE9FC;
+    --green:    #00B894;
+    --green-l:  #D4F5EE;
+    --amber:    #FDCB6E;
+    --amber-l:  #FFF5DC;
+    --amber-d:  #8B6914;
+    --red:      #D63031;
+    --red-l:    #FDECEA;
+    --teal:     #0984E3;
+    --teal-l:   #E3F2FD;
+    --coral:    #E17055;
+    --coral-l:  #FDEEE9;
+    --pink:     #E84393;
+    --pink-l:   #FCEAF4;
+    --mint:     #00CEC9;
+    --mint-l:   #E0FAF9;
+    --gray:     #636E72;
+    --gray-l:   #F1F2F6;
+    --ink:      #1a1a2e;
+    --border:   #DFE6E9;
+    --page:     #F7F8FC;
+    --white:    #ffffff;
+    --radius:   8px;
+    --shadow:   0 1px 4px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--page);
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 28px;
+  }
+  .header-title {
+    font-family: 'Inter Tight', 'Inter', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+  }
+  .header-sub {
+    font-size: 12px;
+    color: var(--gray);
+    margin-top: 4px;
+  }
+  .header-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+  .badge-entry {
+    background: var(--ink);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  .badge-version {
+    background: var(--mint);
+    color: #003d3b;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .case-card {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 18px 14px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+  .case-card.updated {
+    border-color: var(--mint);
+    border-width: 2px;
+  }
+  .case-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .case-number {
+    font-family: 'Inter Tight', 'Inter', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--white);
+    background: var(--ink);
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .case-title { font-weight: 700; font-size: 14px; color: var(--ink); }
+  .case-subtitle { font-size: 11px; color: var(--gray); margin-top: 2px; }
+  .new-badge {
+    background: var(--mint-l);
+    color: #006b68;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid var(--mint);
+    margin-left: 6px;
+    letter-spacing: 0.3px;
+  }
+
+  .flow { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--radius);
+    border: 1.5px solid transparent;
+  }
+  .flow-step-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; width: 20px; text-align: center; }
+  .flow-step-body { flex: 1; }
+  .flow-step-title { font-weight: 600; font-size: 12px; }
+  .flow-step-detail { font-size: 11px; color: var(--gray); margin-top: 2px; line-height: 1.4; }
+
+  .connector { text-align: center; color: var(--gray); font-size: 14px; line-height: 1.8; }
+
+  .branches {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .branches-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .branch-box {
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    border: 1.5px solid transparent;
+  }
+  .branch-box-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .branch-box-content { font-size: 11.5px; font-weight: 500; }
+  .branch-box-detail  { font-size: 11px; color: inherit; opacity: 0.75; margin-top: 3px; line-height: 1.35; }
+
+  .bb-yes    { background: var(--green-l);  border-color: var(--green); }
+  .bb-yes .branch-box-label   { color: #006b5a; }
+  .bb-yes .branch-box-content { color: #006b5a; }
+
+  .bb-no     { background: var(--red-l);    border-color: var(--red); }
+  .bb-no .branch-box-label    { color: #8b1a1a; }
+  .bb-no .branch-box-content  { color: #8b1a1a; }
+
+  .bb-amber  { background: var(--amber-l);  border-color: var(--amber); }
+  .bb-amber .branch-box-label   { color: var(--amber-d); }
+  .bb-amber .branch-box-content { color: var(--amber-d); }
+
+  .bb-purple { background: var(--purple-l); border-color: var(--purple); }
+  .bb-purple .branch-box-label   { color: #3d2e9c; }
+  .bb-purple .branch-box-content { color: #3d2e9c; }
+
+  .bb-teal   { background: var(--teal-l);   border-color: var(--teal); }
+  .bb-teal .branch-box-label    { color: #045f9c; }
+  .bb-teal .branch-box-content  { color: #045f9c; }
+
+  .bb-mint   { background: var(--mint-l);   border-color: var(--mint); }
+  .bb-mint .branch-box-label    { color: #006b68; }
+  .bb-mint .branch-box-content  { color: #006b68; }
+
+  .note-field {
+    background: #fffbe6;
+    border: 1px dashed #d4a800;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 10px;
+    color: #7a5c00;
+    margin-top: 5px;
+    line-height: 1.4;
+  }
+
+  .teal   { background: var(--teal-l);   border-color: var(--teal); }
+  .teal .flow-step-title   { color: #045f9c; }
+  .coral  { background: var(--coral-l);  border-color: var(--coral); }
+  .coral .flow-step-title  { color: #7d3520; }
+  .purple { background: var(--purple-l); border-color: var(--purple); }
+  .purple .flow-step-title { color: #3d2e9c; }
+  .gray   { background: var(--gray-l);   border-color: var(--border); }
+  .gray .flow-step-title   { color: #2d3436; }
+  .mint   { background: var(--mint-l);   border-color: var(--mint); }
+  .mint .flow-step-title   { color: #006b68; }
+
+  .special-card {
+    background: var(--pink-l);
+    border: 1.5px solid var(--pink);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+  .special-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0b8d8;
+  }
+  .special-icon  { font-size: 20px; flex-shrink: 0; }
+  .special-title { font-weight: 700; font-size: 14px; color: #8b1950; }
+  .special-sub   { font-size: 11px; color: #b0396e; margin-top: 2px; }
+
+  .legend {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px 20px;
+    box-shadow: var(--shadow);
+  }
+  .legend-title {
+    grid-column: 1 / -1;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 4px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--ink); }
+  .legend-dot  { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 6px 0 10px; }
+
+  .tag-inline {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: monospace;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 4px;
+  }
+  .tag-mint   { background: var(--mint-l);  color: #006b68; border: 1px solid var(--mint); }
+  .tag-green  { background: var(--green-l); color: #006b5a; border: 1px solid var(--green); }
+  .tag-amber  { background: var(--amber-l); color: var(--amber-d); border: 1px solid var(--amber); }
+  .tag-coral  { background: var(--coral-l); color: #7d3520; border: 1px solid var(--coral); }
+  .tag-red    { background: var(--red-l);   color: #8b1a1a; border: 1px solid var(--red); }
+  .tag-teal   { background: var(--teal-l);  color: #045f9c; border: 1px solid var(--teal); }
+  .tag-gray   { background: var(--gray-l);  color: #2d3436; border: 1px solid var(--border); }
+  .tag-purple { background: var(--purple-l);color: #3d2e9c; border: 1px solid var(--purple); }
+  .tag-pink   { background: var(--pink-l);  color: #8b1950; border: 1px solid var(--pink); }
+  .tag-blue   { background: var(--teal-l);  color: #045f9c; border: 1px solid var(--teal); }
+
+  @media print {
+    body { background: #fff; font-size: 11px; }
+    .page { padding: 16px; max-width: 100%; }
+    .case-card, .special-card { break-inside: avoid; page-break-inside: avoid; box-shadow: none; }
+    .header { border-bottom: 2px solid #000; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="header-title">Logigramme de prospection CSE</div>
+      <div class="header-sub">Processus téléprospection → prise de rendez-vous commercial</div>
+    </div>
+    <div class="header-meta">
+      <div class="badge-entry">Entrée : appel sortant vers standard</div>
+      <div class="badge-version">✦ Version 2 — rappels intégrés</div>
+    </div>
+  </div>
+
+  <!-- CAS 1 -->
+  <div class="case-card">
+    <div class="case-card-header">
+      <div class="case-number">1</div>
+      <div>
+        <div class="case-title">Appel non abouti</div>
+        <div class="case-subtitle">Personne non jointe, numéro incorrect ou sans réponse</div>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="flow-step teal">
+        <div class="flow-step-icon">🔍</div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Vérification du numéro</div>
+          <div class="flow-step-detail">Prise en charge par l'équipe Nirina — tag <span class="tag-inline tag-gray">NRP</span> ou <span class="tag-inline tag-gray">FAX</span> posé à l'appel</div>
+        </div>
+      </div>
+      <div class="connector">↓</div>
+      <div class="branches">
+        <div class="branch-box bb-no">
+          <div class="branch-box-label">✗ Aucun numéro trouvé</div>
+          <div class="branch-box-content">Supprimer la ligne</div>
+          <div class="branch-box-detail">Retrait définitif du fichier de prospection</div>
+          <div class="tag-inline tag-red" style="margin-top:5px;display:inline-block">SUPP</div>
+        </div>
+        <div class="branch-box bb-yes">
+          <div class="branch-box-label">✓ Nouveau numéro identifié</div>
+          <div class="branch-box-content">Mettre à jour le fichier</div>
+          <div class="branch-box-detail">Corriger le numéro dans la fiche de prospection</div>
+          <div class="tag-inline tag-teal" style="margin-top:5px;display:inline-block">MAJ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAS 2 -->
+  <div class="case-card updated">
+    <div class="case-card-header">
+      <div class="case-number">2</div>
+      <div>
+        <div class="case-title">Élu CSE joint directement <span class="new-badge">✦ mis à jour</span></div>
+        <div class="case-subtitle">Le standard transfère le secrétaire, trésorier ou élu CSE</div>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="flow-step purple">
+        <div class="flow-step-icon">🗣️</div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Argumentation</div>
+          <div class="flow-step-detail">Présenter les offres et services, proposer un rendez-vous avec le commercial</div>
+        </div>
+      </div>
+      <div class="connector">↓ &nbsp;<span style="font-size:10px;color:var(--gray)">Résultat de l'échange</span></div>
+      <div class="branches-3">
+        <div class="branch-box bb-no">
+          <div class="branch-box-label">✗ CSE non intéressé</div>
+          <div class="branch-box-content">Fiche jaune → commercial</div>
+          <div class="branch-box-detail">Renseigner : nom, prénom, téléphone, mail, fonction de l'élu<br><strong style="color:var(--amber-d)">Rappel commercial à J+7</strong></div>
+          <div class="tag-inline tag-amber" style="margin-top:5px;display:inline-block">CSE-NI</div>
+        </div>
+        <div class="branch-box bb-yes">
+          <div class="branch-box-label">✓ RDV accepté</div>
+          <div class="branch-box-content">Confirmer et envoyer</div>
+          <div class="branch-box-detail">
+            → Mail de confirmation au prospect<br>
+            → Invitation calendrier au commercial<br>
+            → Fiche récap + enregistrement<br>
+            → Équipes internes en copie
+          </div>
+          <div class="tag-inline tag-green" style="margin-top:5px;display:inline-block">RDV</div>
+        </div>
+        <div class="branch-box bb-mint">
+          <div class="branch-box-label">⏱ Rappel demandé par l'élu</div>
+          <div class="branch-box-content">Programmer le rappel</div>
+          <div class="branch-box-detail">L'élu est disponible mais pas maintenant. Il donne lui-même un créneau précis. <strong style="color:#006b68">Signal positif — prioritaire.</strong></div>
+          <div class="note-field">📝 Note obligatoire : date + heure + nom élu</div>
+          <div class="tag-inline tag-mint" style="margin-top:5px;display:inline-block">RAPL-ELU</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAS 3 -->
+  <div class="case-card updated">
+    <div class="case-card-header">
+      <div class="case-number">3</div>
+      <div>
+        <div class="case-title">Blocage au standard <span class="new-badge">✦ mis à jour</span></div>
+        <div class="case-subtitle">Le standard refuse de transférer ou ne peut pas joindre l'élu</div>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="flow-step coral">
+        <div class="flow-step-icon">📋</div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Obtenir les coordonnées de l'élu auprès du standard</div>
+          <div class="flow-step-detail">Demander : nom, prénom, mail, téléphone, disponibilités</div>
+        </div>
+      </div>
+      <div class="connector">↓ &nbsp;<span style="font-size:10px;color:var(--gray)">Réponse du standard</span></div>
+      <div class="branches">
+        <div class="branch-box bb-mint">
+          <div class="branch-box-label">⏱ Standard propose un créneau</div>
+          <div class="branch-box-content">Programmer le rappel suggéré</div>
+          <div class="branch-box-detail">Le standard indique quand rappeler. Ce n'est pas l'élu lui-même qui demande. <strong style="color:#006b68">Signal neutre.</strong></div>
+          <div class="note-field">📝 Note obligatoire : date + heure + nom du standard</div>
+          <div class="tag-inline tag-mint" style="margin-top:5px;display:inline-block">RAPL-STD</div>
+          <div class="branch-box-detail" style="margin-top:6px">Au rappel : si élu joint → <strong>cas 2</strong> · si toujours bloqué → <strong>BLOC</strong></div>
+        </div>
+        <div class="branch-box bb-no">
+          <div class="branch-box-label">✗ Aucun créneau donné</div>
+          <div class="branch-box-content">Collecter coords + envoyer mail</div>
+          <div class="branch-box-detail">Mail de prise de contact avec présentation et demande de disponibilité</div>
+          <div class="tag-inline tag-coral" style="margin-top:5px;display:inline-block">BLOC</div>
+        </div>
+      </div>
+      <div class="connector">↓ &nbsp;<span style="font-size:10px;color:var(--gray)">Rappeler après 48h (BLOC uniquement)</span></div>
+      <div class="branches">
+        <div class="branch-box bb-yes">
+          <div class="branch-box-label">✓ Élu joint au rappel</div>
+          <div class="branch-box-content">Suivre la procédure cas 2</div>
+          <div class="branch-box-detail">Argumentation → RDV accepté / refus / rappel demandé → voir cas 2</div>
+        </div>
+        <div class="branch-box bb-no">
+          <div class="branch-box-label">✗ Toujours bloqué</div>
+          <div class="branch-box-content">Fiche verte → commercial</div>
+          <div class="branch-box-detail">Transmettre les coordonnées de l'élu au commercial pour relance</div>
+          <div class="tag-inline tag-coral" style="margin-top:5px;display:inline-block">BLOC2</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAS 4 -->
+  <div class="case-card">
+    <div class="case-card-header">
+      <div class="case-number">4</div>
+      <div>
+        <div class="case-title">Pas de CSE dans l'entreprise</div>
+        <div class="case-subtitle">Le standard indique qu'il n'existe pas de CSE</div>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="flow-step gray">
+        <div class="flow-step-icon">❓</div>
+        <div class="flow-step-body">
+          <div class="flow-step-title">Demander le nombre de salariés au standard</div>
+        </div>
+      </div>
+      <div class="connector">↓</div>
+      <div class="branches">
+        <div class="branch-box bb-teal" style="display:flex;flex-direction:column;gap:8px;">
+          <div class="branch-box-label">4.1 — Moins de 50 salariés</div>
+          <div class="branch-box-content">Pas de prise de RDV</div>
+          <div class="branch-box-detail">Demander la personne qui gère les droits à la formation (ex : délégué du personnel ou responsable actions sociales)</div>
+          <hr class="divider">
+          <div style="font-size:11px;font-weight:600;color:#045f9c;">Obtenir les coordonnées :</div>
+          <div class="branch-box-detail">Nom, prénom, mail, téléphone, fonction</div>
+          <hr class="divider">
+          <div class="branch-box-detail">→ Envoi mail de contact<br>→ Fiche verte au commercial<br><strong style="color:#045f9c;">⚠ Bien indiquer : pas de CSE dans cette entreprise</strong></div>
+          <div class="tag-inline tag-blue" style="margin-top:2px;display:inline-block">NCSE-50</div>
+        </div>
+        <div class="branch-box bb-purple" style="display:flex;flex-direction:column;gap:8px;">
+          <div class="branch-box-label">4.2 — 50 salariés ou plus</div>
+          <div class="branch-box-content">Reformuler la demande</div>
+          <div class="branch-box-detail">Insister auprès du standard pour obtenir un élu CSE (l'obligation légale s'applique)</div>
+          <hr class="divider">
+          <div class="branches" style="grid-template-columns:1fr;gap:6px;">
+            <div class="branch-box bb-yes" style="padding:7px 10px;">
+              <div class="branch-box-label">✓ Élu CSE finalement trouvé</div>
+              <div class="branch-box-detail">→ Reprendre le cas 2 ou le cas 3 selon la situation</div>
+            </div>
+            <div class="branch-box bb-teal" style="padding:7px 10px;">
+              <div class="branch-box-label">✗ Toujours sans élu</div>
+              <div class="branch-box-detail">→ Reprendre la procédure 4.1</div>
+            </div>
+          </div>
+          <div class="tag-inline tag-purple" style="margin-top:2px;display:inline-block">NCSE+50</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAS PARTICULIER -->
+  <div class="special-card">
+    <div class="special-card-header">
+      <div class="special-icon">⚠️</div>
+      <div>
+        <div class="special-title">Cas particulier — CSE centralisé (maison mère ou autre site)</div>
+        <div class="special-sub">Le standard indique que le CSE est rattaché à un autre site</div>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="flow-step" style="background:var(--pink-l);border-color:var(--pink);">
+        <div class="flow-step-icon">📍</div>
+        <div class="flow-step-body">
+          <div class="flow-step-title" style="color:#8b1950;">Obtenir les coordonnées complètes de l'élu CSE centralisé</div>
+          <div class="flow-step-detail">Nom, prénom, mail, téléphone, département et ville du site concerné</div>
+        </div>
+      </div>
+      <div class="connector">↓</div>
+      <div class="branches">
+        <div class="branch-box bb-yes">
+          <div class="branch-box-label">✓ Département dans notre zone de prospection</div>
+          <div class="branch-box-content">Planifier l'appel</div>
+          <div class="branch-box-detail">Programmer un appel vers ce contact → passer au cas 2</div>
+          <div class="tag-inline tag-pink" style="margin-top:5px;display:inline-block">CSE-ZONE</div>
+        </div>
+        <div class="branch-box bb-amber">
+          <div class="branch-box-label">→ Département hors zone</div>
+          <div class="branch-box-content">Envoi fiche → Bruno</div>
+          <div class="branch-box-detail">Transmettre les coordonnées complètes de l'élu à Bruno pour traitement</div>
+          <div class="tag-inline tag-pink" style="margin-top:5px;display:inline-block">CSE-HZ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LÉGENDE -->
+  <div class="legend">
+    <div class="legend-title">Légende — tags Ringover & actions</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--gray-l);border:1.5px solid var(--border);"></div> NRP / FAX — appel non abouti</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--red-l);border:1.5px solid var(--red);"></div> SUPP — suppression fichier</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--teal-l);border:1.5px solid var(--teal);"></div> MAJ — numéro mis à jour</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div> RDV — rendez-vous confirmé</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--amber);"></div> CSE-NI — non intéressé, fiche jaune J+7</div>
+    <div class="legend-item" style="font-weight:600;"><div class="legend-dot" style="background:var(--mint);border:1.5px solid #009e9b;"></div> RAPL-ELU — rappel demandé par l'élu ✦ nouveau</div>
+    <div class="legend-item" style="font-weight:600;"><div class="legend-dot" style="background:var(--mint-l);border:1.5px solid var(--mint);"></div> RAPL-STD — rappel suggéré par le standard ✦ nouveau</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--coral);"></div> BLOC / BLOC2 — blocage standard</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--teal-l);border:1.5px solid var(--teal);"></div> NCSE-50 / NCSE+50 — sans CSE</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--pink);"></div> CSE-ZONE / CSE-HZ — CSE centralisé</div>
+    <div class="legend-item" style="grid-column:1/-1;font-size:10px;color:var(--gray);border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">
+      Règle d'or : 2 tags obligatoires par appel dans Ringover → tag DEP_XX + tag statut
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

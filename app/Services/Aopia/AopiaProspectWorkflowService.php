@@ -6,12 +6,18 @@ use App\Enums\ProspectStatut;
 use App\Models\Prospect;
 use App\Models\RendezVous;
 use App\Models\User;
+use App\Services\Crm\CrmProfileService;
+use App\Services\Crm\CrmSettingsService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class AopiaProspectWorkflowService
 {
+    public function __construct(
+        private readonly CrmSettingsService $settings,
+    ) {}
+
     /**
      * Change le statut en respectant la matrice CDC AOPIA.
      */
@@ -39,11 +45,15 @@ class AopiaProspectWorkflowService
 
         if ($nouveauStatut === ProspectStatut::STD_NR) {
             $this->verifierTentativesStandard($prospect);
-            $prospect->rappel_planifie_at = now()->addDays(config('aopia.prospection.std_nr_reminder_days', 2));
+            $prospect->rappel_planifie_at = now()->addDays(
+                (int) $this->settings->get('prospection.std_nr_reminder_days', 2)
+            );
         }
 
         if ($nouveauStatut === ProspectStatut::RPC && ! $prospect->rappel_planifie_at) {
-            $prospect->rappel_planifie_at = now()->addHours(config('aopia.prospection.rpc_delay_hours', 48));
+            $prospect->rappel_planifie_at = now()->addHours(
+                (int) $this->settings->get('prospection.rpc_delay_hours', 48)
+            );
         }
 
         $prospect->statut = $nouveauStatut;
@@ -111,7 +121,7 @@ class AopiaProspectWorkflowService
 
         if (blank($prospect->nb_salaries)) {
             $missing[] = 'Effectif total';
-        } elseif ((int) $prospect->nb_salaries < config('aopia.qf.minimum_employee_count', 12)) {
+        } elseif ((int) $prospect->nb_salaries < (int) $this->settings->get('qf.minimum_employee_count', 12)) {
             $missing[] = 'Effectif insuffisant pour QF';
         }
 
@@ -175,7 +185,11 @@ class AopiaProspectWorkflowService
 
     private function estTeamLeader(User $user): bool
     {
-        $roles = config('aopia.qf.team_leader_roles', ['team_leader', 'administrateur', 'super_admin']);
+        if (app(CrmProfileService::class)->userHasCapability($user, 'validate_qf')) {
+            return true;
+        }
+
+        $roles = $this->settings->get('qf.team_leader_roles', []);
 
         return method_exists($user, 'hasAnyRole')
             ? $user->hasAnyRole($roles)
@@ -184,7 +198,7 @@ class AopiaProspectWorkflowService
 
     private function verifierTentativesStandard(Prospect $prospect): void
     {
-        $max = (int) config('aopia.prospection.max_standard_attempts', 3);
+        $max = (int) $this->settings->get('prospection.max_standard_attempts', 3);
 
         // Le projet possède déjà Appel, mais les colonnes peuvent évoluer.
         // On applique une vérification souple : si aucune table d'appels exploitable n'est liée,

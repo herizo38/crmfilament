@@ -1,0 +1,21 @@
+<?php
+
+/**
+ * Statuts phoning prospect CSE v2 — entièrement paramétrable en back-office.
+ */
+return [
+    ['code' => 'nrp', 'label' => 'NRP', 'description' => 'Ne répond pas', 'couleur' => 'gray', 'icone' => '📵', 'ordre' => 1, 'groupe' => 'cas_1', 'pipeline_statut' => 'AC', 'compte_comme_tentative' => true, 'action_immediate' => 'Vérification numéro — équipe Nirina'],
+    ['code' => 'fax', 'label' => 'FAX', 'description' => 'Fax / Numéro incorrect', 'couleur' => 'gray', 'icone' => '📠', 'ordre' => 2, 'groupe' => 'cas_1', 'pipeline_statut' => 'AC', 'compte_comme_tentative' => true, 'action_immediate' => 'Vérification numéro — équipe Nirina'],
+    ['code' => 'supp', 'label' => 'SUPP', 'description' => 'À supprimer — aucun numéro trouvé', 'couleur' => 'red', 'icone' => '🗑️', 'ordre' => 3, 'groupe' => 'cas_1', 'pipeline_statut' => 'KO', 'retire_de_file' => true, 'action_immediate' => 'Retrait définitif du fichier'],
+    ['code' => 'maj', 'label' => 'MAJ', 'description' => 'Numéro mis à jour par Nirina', 'couleur' => 'teal', 'icone' => '🔄', 'ordre' => 4, 'groupe' => 'cas_1', 'pipeline_statut' => 'AC', 'action_immediate' => 'Corriger le numéro et recomposer'],
+    ['code' => 'rdv', 'label' => 'RDV', 'description' => 'Rendez-vous confirmé avec l\'élu', 'couleur' => 'green', 'icone' => '📅', 'ordre' => 5, 'groupe' => 'cas_2', 'pipeline_statut' => 'RPC', 'fiche_type' => 'bleue', 'action_immediate' => 'Dossier complet transmis au commercial'],
+    ['code' => 'cse_ni', 'label' => 'CSE-NI', 'description' => 'Élu non intéressé — fiche jaune J+7', 'couleur' => 'yellow', 'icone' => '🟡', 'ordre' => 6, 'groupe' => 'cas_2', 'pipeline_statut' => 'RP', 'delai_rappel_jours' => 7, 'fiche_type' => 'jaune', 'action_immediate' => 'Fiche jaune → rappel commercial J+7'],
+    ['code' => 'rapl_elu', 'label' => 'RAPL-ELU', 'description' => 'Rappel demandé par l\'élu — signal positif', 'couleur' => 'mint', 'icone' => '⏰', 'ordre' => 7, 'groupe' => 'cas_2', 'pipeline_statut' => 'RP', 'note_obligatoire' => true, 'prioritaire' => true, 'message_note_obligatoire' => 'Date + heure + nom de l\'élu', 'action_immediate' => 'Tâche rappel prioritaire'],
+    ['code' => 'rapl_std', 'label' => 'RAPL-STD', 'description' => 'Rappel suggéré par le standard', 'couleur' => 'mint', 'icone' => '⏱️', 'ordre' => 8, 'groupe' => 'cas_3', 'pipeline_statut' => 'STD_Joint', 'note_obligatoire' => true, 'message_note_obligatoire' => 'Date + heure + nom du standard', 'action_immediate' => 'Tâche rappel à la date suggérée'],
+    ['code' => 'bloc', 'label' => 'BLOC', 'description' => 'Bloqué au standard — mail envoyé', 'couleur' => 'orange', 'icone' => '🔒', 'ordre' => 9, 'groupe' => 'cas_3', 'pipeline_statut' => 'STD_Joint', 'delai_rappel_jours' => 2, 'action_immediate' => 'Mail envoyé — rappel J+2'],
+    ['code' => 'bloc2', 'label' => 'BLOC2', 'description' => 'Toujours bloqué — fiche verte commercial', 'couleur' => 'orange', 'icone' => '🔒', 'ordre' => 10, 'groupe' => 'cas_3', 'pipeline_statut' => 'CSE_NR', 'fiche_type' => 'verte', 'action_immediate' => 'Fiche verte transmise au commercial'],
+    ['code' => 'ncse_50', 'label' => 'NCSE-50', 'description' => 'Pas de CSE — moins de 50 salariés', 'couleur' => 'blue', 'icone' => '🏢', 'ordre' => 11, 'groupe' => 'cas_4', 'pipeline_statut' => 'CSE_NR', 'fiche_type' => 'verte', 'action_immediate' => 'Mail + fiche verte « sans CSE »'],
+    ['code' => 'ncse_plus50', 'label' => 'NCSE+50', 'description' => 'Pas de CSE — 50 sal. ou plus', 'couleur' => 'purple', 'icone' => '🏛️', 'ordre' => 12, 'groupe' => 'cas_4', 'pipeline_statut' => 'STD_Joint', 'action_immediate' => 'Insister — obligation légale'],
+    ['code' => 'cse_zone', 'label' => 'CSE-ZONE', 'description' => 'CSE centralisé dans notre zone', 'couleur' => 'pink', 'icone' => '📍', 'ordre' => 13, 'groupe' => 'cas_particulier', 'pipeline_statut' => 'STD_Joint', 'fiche_type' => 'verte', 'action_immediate' => 'Planifier appel → cas 2'],
+    ['code' => 'cse_hz', 'label' => 'CSE-HZ', 'description' => 'CSE centralisé hors zone', 'couleur' => 'pink', 'icone' => '🗺️', 'ordre' => 14, 'groupe' => 'cas_particulier', 'pipeline_statut' => 'KO', 'retire_de_file' => true, 'action_immediate' => 'Fiche transmise à Bruno'],
+];

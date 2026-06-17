@@ -5,6 +5,7 @@ namespace App\Filament\NsConseil\Pages;
 use App\Models\Prospect;
 use App\Models\User;
 use App\Enums\ProspectStatut;
+use App\Services\Crm\CrmSettingsService;
 use Filament\Pages\Page;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -39,10 +40,14 @@ class PhoningBackOffice extends Page
     // ── Requête centrale ─────────────────────────────────────────────
     protected function queryTeleprospecteurs()
     {
+        $roles = app(CrmSettingsService::class)->get('roles.teleprospecteur_roles', ['teleprospecteur']);
+
         return User::query()
-            ->where(function ($q) {
-                $q->whereHas('roles', fn($r) => $r->where('name', User::ROLE_TELEPROSPECTEUR))
-                    ->orWhere('role_cache', User::ROLE_TELEPROSPECTEUR);
+            ->where(function ($q) use ($roles) {
+                $q->whereHas('roles', fn ($r) => $r->whereIn('name', $roles));
+                foreach ($roles as $role) {
+                    $q->orWhere('role_cache', $role);
+                }
             })
             ->where('actif', true)
             ->orderBy('nom')

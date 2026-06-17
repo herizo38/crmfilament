@@ -8,9 +8,20 @@ class StatutPhoning extends Model
 {
     protected $fillable = [
         'model_type',
+        'groupe',
+        'groupe_label',
         'code',
         'label',
         'description',
+        'action_immediate',
+        'note_obligatoire',
+        'message_note_obligatoire',
+        'delai_rappel_jours',
+        'prioritaire',
+        'fiche_type',
+        'retire_de_file',
+        'pipeline_statut',
+        'compte_comme_tentative',
         'couleur',
         'icone',
         'ordre',
@@ -20,6 +31,11 @@ class StatutPhoning extends Model
     protected $casts = [
         'actif' => 'boolean',
         'ordre' => 'integer',
+        'note_obligatoire' => 'boolean',
+        'prioritaire' => 'boolean',
+        'retire_de_file' => 'boolean',
+        'compte_comme_tentative' => 'boolean',
+        'delai_rappel_jours' => 'integer',
     ];
 
     const MODEL_TYPES = [

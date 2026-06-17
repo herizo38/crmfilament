@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * Valeurs de repli si la base n'est pas encore seedée.
+ * Source de vérité : table crm_settings (éditable Super Admin > Paramètres CRM).
+ */
 return [
     'mail' => [
         'from_address' => env('AOPIA_MAIL_FROM', 'assistante-commerciale@ns-conseil.com'),
@@ -17,5 +21,8 @@ return [
         'max_standard_attempts' => (int) env('AOPIA_MAX_STANDARD_ATTEMPTS', 3),
         'std_nr_reminder_days' => (int) env('AOPIA_STD_NR_REMINDER_DAYS', 2),
         'rpc_delay_hours' => (int) env('AOPIA_RPC_DELAY_HOURS', 48),
+        'cse_ni_reminder_days' => (int) env('AOPIA_CSE_NI_REMINDER_DAYS', 7),
+        'bloc_reminder_days' => (int) env('AOPIA_BLOC_REMINDER_DAYS', 2),
+        'ringover_rule' => 'DEP_XX + tag statut obligatoires par appel',
     ],
 ];
