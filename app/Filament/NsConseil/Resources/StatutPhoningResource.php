@@ -2,6 +2,7 @@
 
 namespace App\Filament\NsConseil\Resources;
 
+use App\Filament\NsConseil\Concerns\HasRoleAccess;
 use App\Filament\NsConseil\Resources\StatutPhoningResource\Pages\CreateStatutPhoning;
 use App\Filament\NsConseil\Resources\StatutPhoningResource\Pages\EditStatutPhoning;
 use App\Filament\NsConseil\Resources\StatutPhoningResource\Pages\ListStatutPhonings;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class StatutPhoningResource extends Resource
 {
+    use HasRoleAccess;
+
     protected static ?string $model = StatutPhoning::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-tag';
@@ -29,6 +32,11 @@ class StatutPhoningResource extends Resource
     protected static ?string $modelLabel = 'Statut Phoning';
 
     protected static ?string $pluralModelLabel = 'Statuts Phoning';
+
+    public static function canAccess(): bool
+    {
+        return static::userHasAnyRole(['admin', 'superviseur']);
+    }
 
     public static function form(Form $form): Form
     {

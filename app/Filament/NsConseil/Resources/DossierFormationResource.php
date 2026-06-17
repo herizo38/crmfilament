@@ -2,6 +2,7 @@
 
 namespace App\Filament\NsConseil\Resources;
 
+use App\Filament\NsConseil\Concerns\HasRoleAccess;
 use App\Filament\NsConseil\Resources\DossierFormationResource\Pages;
 use App\Filament\NsConseil\Resources\DossierFormationResource\RelationManagers\HeuresRelationManager;
 use App\Filament\NsConseil\Resources\DossierFormationResource\RelationManagers\PlanningRelationManager;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class DossierFormationResource extends Resource
 {
+    use HasRoleAccess;
+
     protected static ?string $model = DossierFormation::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
@@ -27,6 +30,11 @@ class DossierFormationResource extends Resource
     protected static ?string $navigationLabel = 'Dossiers Formation';
 
     protected static ?int $navigationSort = 3;
+
+    public static function canAccess(): bool
+    {
+        return static::userHasAnyRole(['admin', 'superviseur', 'commercial']);
+    }
 
     public static function getNavigationBadge(): ?string
     {

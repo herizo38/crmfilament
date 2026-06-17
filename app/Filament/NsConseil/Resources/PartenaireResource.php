@@ -4,6 +4,7 @@ namespace App\Filament\NsConseil\Resources;
 
 use App\Enums\OrganizationStatus;
 use App\Enums\OrganizationType;
+use App\Filament\NsConseil\Concerns\HasRoleAccess;
 use App\Filament\NsConseil\Resources\PartenaireResource\Pages;
 use App\Filament\NsConseil\Resources\PartenaireResource\RelationManagers;
 use App\Models\Consultant;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class PartenaireResource extends Resource
 {
+    use HasRoleAccess;
+
     protected static ?string $model = Partenaire::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
@@ -30,6 +33,11 @@ class PartenaireResource extends Resource
     protected static ?string $navigationLabel = 'Partenaires';
 
     protected static ?int $navigationSort = 1;
+
+    public static function canAccess(): bool
+    {
+        return static::userHasAnyRole(['admin', 'superviseur', 'commercial']);
+    }
 
     public static function getNavigationBadge(): ?string
     {

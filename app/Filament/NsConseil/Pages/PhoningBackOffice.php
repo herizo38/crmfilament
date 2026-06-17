@@ -3,6 +3,7 @@
 namespace App\Filament\NsConseil\Pages;
 
 use App\Enums\ProspectStatut;
+use App\Filament\NsConseil\Concerns\HasRoleAccess;
 use App\Models\Prospect;
 use App\Models\User;
 use App\Services\Crm\CrmSettingsService;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Cache;
 
 class PhoningBackOffice extends Page
 {
+    use HasRoleAccess;
+
     protected static ?string $navigationIcon = 'heroicon-o-queue-list';
 
     protected static ?string $navigationLabel = 'File d\'appels — Back-office';
@@ -21,6 +24,11 @@ class PhoningBackOffice extends Page
     protected static ?string $navigationGroup = 'Activités';
 
     protected static ?int $navigationSort = 3;
+
+    public static function canAccess(): bool
+    {
+        return static::userHasAnyRole(['admin', 'superviseur']);
+    }
 
     protected static string $view = 'filament.ns-conseil.pages.phoning-back-office';
 

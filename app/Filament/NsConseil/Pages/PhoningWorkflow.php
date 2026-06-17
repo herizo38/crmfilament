@@ -6,6 +6,7 @@ use App\Enums\EventResult;
 use App\Enums\EventType;
 use App\Enums\ProspectStatut;
 use App\Enums\StatutCampagneProspection;
+use App\Filament\NsConseil\Resources\CampagnePhoningResource;
 use App\Models\Appel;
 use App\Models\ArtisanProspection;
 use App\Models\CampagnePhoning;
@@ -21,6 +22,7 @@ use App\Services\Crm\CrmProfileService;
 use App\Services\Crm\CrmSettingsService;
 use App\Support\CsePhoningWorkflow;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Model;
@@ -564,7 +566,33 @@ class PhoningWorkflow extends Page
 
         array_shift($this->contactQueue);
         $this->completed++;
+
+        $this->checkCampagneCompletion();
+
         $this->loadNextContact();
+    }
+
+    protected function checkCampagneCompletion(): void
+    {
+        if (! $this->currentCampagneId) {
+            return;
+        }
+
+        $campagne = CampagnePhoning::find($this->currentCampagneId);
+        if (! $campagne || $campagne->statut !== 'active') {
+            return;
+        }
+
+        if ($campagne->estTerminee()) {
+            $campagne->update(['statut' => 'terminee']);
+
+            Notification::make()
+                ->title('Campagne terminée !')
+                ->body("Tous les contacts de « {$campagne->nom} » ont été traités.")
+                ->success()
+                ->duration(8000)
+                ->send();
+        }
     }
 
     protected function updateArtisan(): void
@@ -952,9 +980,115 @@ class PhoningWorkflow extends Page
         return $this->compterTentativesNonAbouties();
     }
 
+    public function selectCampagne(int $campagneId): void
+    {
+        $this->currentCampagneId = $campagneId;
+        $this->completed = 0;
+        $this->loadQueue();
+        $this->loadNextContact();
+
+        $campagne = CampagnePhoning::find($campagneId);
+        Notification::make()
+            ->title('Campagne sélectionnée')
+            ->body($campagne?->nom ?? 'Campagne #'.$campagneId)
+            ->success()
+            ->send();
+    }
+
+    public function clearCampagne(): void
+    {
+        $this->currentCampagneId = null;
+        $this->completed = 0;
+        $this->loadQueue();
+        $this->loadNextContact();
+
+        Notification::make()
+            ->title('Toutes les campagnes')
+            ->body('File rechargée avec toutes les campagnes actives.')
+            ->info()
+            ->send();
+    }
+
+    public function getCampagneInfo(): ?array
+    {
+        if (! $this->currentCampagneId) {
+            return null;
+        }
+
+        $campagne = CampagnePhoning::find($this->currentCampagneId);
+        if (! $campagne) {
+            return null;
+        }
+
+        $stats = $campagne->getStats();
+
+        return [
+            'id' => $campagne->id,
+            'nom' => $campagne->nom,
+            'statut' => $campagne->statut,
+            'statut_label' => $campagne->statut_label,
+            'type_entite' => $campagne->type_entite_label,
+            'total_contacts' => $stats['total_contacts'],
+            'contacts_traites' => $stats['contacts_traites'],
+            'progression' => $stats['progression'],
+            'total_appels' => $stats['total_appels'],
+        ];
+    }
+
+    public function getCampagnesDisponibles(): array
+    {
+        $userId = $this->supervisedUserId ?? Auth::id();
+
+        return CampagnePhoning::active()
+            ->forUser($userId)
+            ->get()
+            ->map(fn ($c) => [
+                'id' => $c->id,
+                'nom' => $c->nom,
+                'type_entite' => $c->type_entite_label,
+                'contacts' => $c->countContacts(),
+            ])
+            ->toArray();
+    }
+
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('choisir_campagne')
+                ->label('Choisir une campagne')
+                ->icon('heroicon-o-megaphone')
+                ->color('info')
+                ->form([
+                    Select::make('campagne_id')
+                        ->label('Campagne')
+                        ->options(function () {
+                            $userId = $this->supervisedUserId ?? Auth::id();
+
+                            return CampagnePhoning::active()
+                                ->forUser($userId)
+                                ->get()
+                                ->mapWithKeys(fn ($c) => [$c->id => "{$c->nom} ({$c->countContacts()} contacts)"]);
+                        })
+                        ->required()
+                        ->searchable(),
+                ])
+                ->action(fn (array $data) => $this->selectCampagne((int) $data['campagne_id'])),
+
+            Action::make('toutes_campagnes')
+                ->label('Toutes les campagnes')
+                ->icon('heroicon-o-squares-2x2')
+                ->color('gray')
+                ->visible(fn () => $this->currentCampagneId !== null)
+                ->action(fn () => $this->clearCampagne()),
+
+            Action::make('voir_campagne')
+                ->label('Stats campagne')
+                ->icon('heroicon-o-chart-bar')
+                ->color('success')
+                ->visible(fn () => $this->currentCampagneId !== null)
+                ->url(fn () => CampagnePhoningResource::getUrl('view', ['record' => $this->currentCampagneId]))
+                ->openUrlInNewTab(),
+
             Action::make('workflow_cse')
                 ->label('Workflow CSE v2')
                 ->icon('heroicon-o-map')

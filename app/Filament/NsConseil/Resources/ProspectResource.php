@@ -145,7 +145,8 @@ class ProspectResource extends Resource
                         ->relationship('teleprospecteur', 'nom')
                         ->getOptionLabelFromRecordUsing(fn (User $r) => "{$r->prenom} {$r->nom}")
                         ->searchable()
-                        ->preload(),
+                        ->preload()
+                        ->default(fn () => auth()->user()?->hasRoleCache('teleprospecteur') ? auth()->id() : null),
 
                     Forms\Components\Select::make('commercial_id')
                         ->label('Commercial (si QF)')
@@ -153,11 +154,13 @@ class ProspectResource extends Resource
                         ->getOptionLabelFromRecordUsing(fn (User $r) => "{$r->prenom} {$r->nom}")
                         ->searchable()
                         ->preload()
-                        ->nullable(),
+                        ->nullable()
+                        ->default(fn () => auth()->user()?->hasRoleCache('commercial') ? auth()->id() : null),
 
                     Forms\Components\DatePicker::make('date_premier_contact')
                         ->label('1er contact le')
-                        ->displayFormat('d/m/Y'),
+                        ->displayFormat('d/m/Y')
+                        ->default(now()),
 
                     Forms\Components\DateTimePicker::make('rappel_planifie_at')
                         ->label('Rappel planifié le')

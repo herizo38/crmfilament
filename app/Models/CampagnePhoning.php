@@ -54,6 +54,59 @@ class CampagnePhoning extends Model
         return $this->belongsTo(EntiteCommerciale::class, 'entite_id');
     }
 
+    public function appels()
+    {
+        return $this->hasMany(Appel::class, 'campagne_id');
+    }
+
+    public function scripts()
+    {
+        return $this->hasMany(ScriptAppel::class, 'campagne_id');
+    }
+
+    // ── Statistiques campagne ─────────────────────────────────────────
+
+    public function getStats(): array
+    {
+        $totalContacts = $this->countContacts();
+        $appels = $this->appels();
+        $totalAppels = $appels->count();
+
+        $contactsTraites = $appels->distinct('appelable_id')->count('appelable_id');
+
+        $parStatut = $appels->selectRaw('phoning_status, COUNT(*) as total')
+            ->groupBy('phoning_status')
+            ->pluck('total', 'phoning_status')
+            ->toArray();
+
+        $progression = $totalContacts > 0
+            ? round(($contactsTraites / $totalContacts) * 100, 1)
+            : 0;
+
+        return [
+            'total_contacts' => $totalContacts,
+            'contacts_traites' => $contactsTraites,
+            'contacts_restants' => max(0, $totalContacts - $contactsTraites),
+            'total_appels' => $totalAppels,
+            'progression' => $progression,
+            'par_statut' => $parStatut,
+        ];
+    }
+
+    public function estTerminee(): bool
+    {
+        $totalContacts = $this->countContacts();
+        if ($totalContacts === 0) {
+            return false;
+        }
+
+        $contactsTraites = $this->appels()
+            ->distinct('appelable_id')
+            ->count('appelable_id');
+
+        return $contactsTraites >= $totalContacts;
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────
 
     public function scopeActive(Builder $query): Builder

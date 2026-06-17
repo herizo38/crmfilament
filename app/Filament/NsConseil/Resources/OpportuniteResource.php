@@ -3,6 +3,7 @@
 namespace App\Filament\NsConseil\Resources;
 
 use App\Enums\OrganizationType;
+use App\Filament\NsConseil\Concerns\HasRoleAccess;
 use App\Filament\NsConseil\Resources\ClientResource\RelationManagers\DocumentsRelationManager;
 use App\Filament\NsConseil\Resources\ClientResource\RelationManagers\RendezVousRelationManager;
 use App\Filament\NsConseil\Resources\OpportuniteResource\Pages;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class OpportuniteResource extends Resource
 {
+    use HasRoleAccess;
+
     protected static ?string $model = Opportunite::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-light-bulb';
@@ -30,6 +33,11 @@ class OpportuniteResource extends Resource
     protected static ?string $navigationLabel = 'Opportunités';
 
     protected static ?int $navigationSort = 3;
+
+    public static function canAccess(): bool
+    {
+        return static::userHasAnyRole(['admin', 'superviseur', 'commercial']);
+    }
 
     public static function getNavigationBadge(): ?string
     {

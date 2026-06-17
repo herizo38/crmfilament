@@ -80,11 +80,13 @@ class CampagnePhoningResource extends Resource
                         )
                         ->searchable()
                         ->nullable()
+                        ->default(fn () => auth()->user()?->hasRoleCache('teleprospecteur') ? auth()->id() : null)
                         ->placeholder('Tous les agents'),
 
                     Forms\Components\Select::make('type_entite')
                         ->label('Cible')
                         ->options(CampagnePhoning::TYPES_ENTITE)
+                        ->default('prospects')
                         ->required()
                         ->live()
                         ->afterStateUpdated(fn (Forms\Set $set) => $set('criteres', [])),
@@ -313,6 +315,7 @@ class CampagnePhoningResource extends Resource
                     ->visible(fn ($record) => $record->statut === 'active')
                     ->url(fn ($record) => route('filament.ns-conseil.pages.phoning-workflow', ['campagne_id' => $record->id])),
 
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
@@ -332,6 +335,7 @@ class CampagnePhoningResource extends Resource
         return [
             'index' => Pages\ListCampagnesPhonings::route('/'),
             'create' => Pages\CreateCampagnePhoning::route('/create'),
+            'view' => Pages\ViewCampagnePhoning::route('/{record}'),
             'edit' => Pages\EditCampagnePhoning::route('/{record}/edit'),
         ];
     }

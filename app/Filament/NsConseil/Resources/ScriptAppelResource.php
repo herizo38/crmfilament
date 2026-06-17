@@ -2,6 +2,7 @@
 
 namespace App\Filament\NsConseil\Resources;
 
+use App\Filament\NsConseil\Concerns\HasRoleAccess;
 use App\Filament\NsConseil\Resources\ScriptAppelResource\Pages\CreateScriptAppel;
 use App\Filament\NsConseil\Resources\ScriptAppelResource\Pages\EditScriptAppel;
 use App\Filament\NsConseil\Resources\ScriptAppelResource\Pages\ListScriptAppels;
@@ -24,6 +25,8 @@ use Filament\Tables\Table;
 
 class ScriptAppelResource extends Resource
 {
+    use HasRoleAccess;
+
     protected static ?string $model = ScriptAppel::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
@@ -37,6 +40,11 @@ class ScriptAppelResource extends Resource
     protected static ?string $modelLabel = 'Script d\'appel';
 
     protected static ?string $pluralModelLabel = 'Scripts d\'appel';
+
+    public static function canAccess(): bool
+    {
+        return static::userHasAnyRole(['admin', 'superviseur']);
+    }
 
     // ── Formulaire ───────────────────────────────────────────────────
     public static function form(Form $form): Form

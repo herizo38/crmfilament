@@ -117,7 +117,8 @@ class RendezVousResource extends Resource
                             ->toArray()
                         )
                         ->searchable()
-                        ->nullable(),
+                        ->nullable()
+                        ->default(fn () => auth()->user()?->hasRoleCache('commercial') ? auth()->id() : null),
 
                     Forms\Components\Select::make('teleprospecteur_id')
                         ->label('Téléprospecteur')
@@ -127,7 +128,8 @@ class RendezVousResource extends Resource
                             ->toArray()
                         )
                         ->searchable()
-                        ->nullable(),
+                        ->nullable()
+                        ->default(fn () => auth()->user()?->hasRoleCache('teleprospecteur') ? auth()->id() : null),
                 ])->columns(2),
 
             Forms\Components\Section::make('Notes')

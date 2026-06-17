@@ -2,6 +2,7 @@
 
 namespace App\Filament\NsConseil\Pages;
 
+use App\Filament\NsConseil\Concerns\HasRoleAccess;
 use App\Filament\NsConseil\Widgets\AircallAppelsRecents;
 use App\Filament\NsConseil\Widgets\AircallStatsOverview;
 use App\Services\AircallService;
@@ -11,6 +12,8 @@ use Filament\Pages\Page;
 
 class AircallDashboard extends Page
 {
+    use HasRoleAccess;
+
     protected static ?string $navigationIcon = 'heroicon-o-phone';
 
     protected static ?string $navigationLabel = 'Dashboard Aircall';
@@ -18,6 +21,11 @@ class AircallDashboard extends Page
     protected static ?string $navigationGroup = 'Activités';
 
     protected static ?int $navigationSort = 1;
+
+    public static function canAccess(): bool
+    {
+        return static::userHasAnyRole(['admin', 'superviseur']);
+    }
 
     protected static ?string $title = 'Dashboard Aircall';
 

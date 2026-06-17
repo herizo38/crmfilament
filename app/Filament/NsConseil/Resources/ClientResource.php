@@ -2,6 +2,7 @@
 
 namespace App\Filament\NsConseil\Resources;
 
+use App\Filament\NsConseil\Concerns\HasRoleAccess;
 use App\Filament\NsConseil\Resources\ClientResource\Actions\ImportClientsAction;
 use App\Filament\NsConseil\Resources\ClientResource\Pages;
 use App\Filament\NsConseil\Resources\ClientResource\RelationManagers\DocumentsRelationManager;
@@ -20,6 +21,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ClientResource extends Resource
 {
+    use HasRoleAccess;
+
     protected static ?string $model = Client::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
@@ -29,6 +32,11 @@ class ClientResource extends Resource
     protected static ?string $navigationLabel = 'Clients';
 
     protected static ?int $navigationSort = 1;
+
+    public static function canAccess(): bool
+    {
+        return static::userHasAnyRole(['admin', 'superviseur', 'commercial']);
+    }
 
     public static function getNavigationBadge(): ?string
     {
