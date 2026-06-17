@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Statuts d'appels — Campagne CSE v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700&display=swap');
+
+  :root {
+    --purple:   #6C5CE7;
+    --purple-l: #EDE9FC;
+    --green:    #00B894;
+    --green-l:  #D4F5EE;
+    --amber:    #FDCB6E;
+    --amber-l:  #FFF5DC;
+    --amber-d:  #8B6914;
+    --red:      #D63031;
+    --red-l:    #FDECEA;
+    --teal:     #0984E3;
+    --teal-l:   #E3F2FD;
+    --coral:    #E17055;
+    --coral-l:  #FDEEE9;
+    --pink:     #E84393;
+    --pink-l:   #FCEAF4;
+    --mint:     #00CEC9;
+    --mint-l:   #E0FAF9;
+    --gray:     #636E72;
+    --gray-l:   #F1F2F6;
+    --ink:      #1a1a2e;
+    --border:   #DFE6E9;
+    --page:     #F7F8FC;
+    --white:    #ffffff;
+    --radius:   10px;
+    --shadow:   0 1px 4px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--page);
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 28px;
+  }
+  .header-title {
+    font-family: 'Inter Tight', 'Inter', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+  }
+  .header-sub { font-size: 12px; color: var(--gray); margin-top: 4px; }
+  .header-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .badge-count {
+    background: var(--ink);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+  .badge-version {
+    background: var(--mint);
+    color: #003d3b;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  /* SECTION TITLE */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 24px 0 10px;
+  }
+  .section-num {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.2px;
+  }
+  .section-sub { font-size: 11px; color: var(--gray); margin-left: 4px; }
+  .new-section-badge {
+    background: var(--mint-l);
+    color: #006b68;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid var(--mint);
+    margin-left: 6px;
+  }
+
+  /* GRID */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+
+  /* CARD */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 13px 14px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    box-shadow: var(--shadow);
+  }
+  .card.new-card {
+    border: 2px solid var(--mint);
+    background: linear-gradient(135deg, #fff 85%, var(--mint-l));
+  }
+
+  /* BADGE */
+  .badge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    min-width: 90px;
+    flex-shrink: 0;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    width: 100%;
+    text-align: center;
+    font-family: 'Inter Tight', monospace;
+    letter-spacing: 0.3px;
+  }
+  .badge-sub {
+    font-size: 9.5px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 10px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .new-pill {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: var(--mint-l);
+    color: #006b68;
+    border: 1px solid var(--mint);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+  }
+
+  /* CARD CONTENT */
+  .card-label { font-weight: 700; font-size: 13px; color: var(--ink); margin-bottom: 3px; }
+  .card-desc { font-size: 12px; color: var(--gray); line-height: 1.5; }
+  .card-action {
+    font-size: 11px;
+    margin-top: 6px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-block;
+    font-weight: 500;
+  }
+  .note-oblig {
+    background: #fffbe6;
+    border: 1px dashed #d4a800;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 10.5px;
+    color: #7a5c00;
+    margin-top: 5px;
+    line-height: 1.4;
+    display: block;
+  }
+  .priority-flag {
+    background: var(--mint-l);
+    border: 1px solid var(--mint);
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 10.5px;
+    color: #006b68;
+    font-weight: 600;
+    margin-top: 4px;
+    display: inline-block;
+  }
+
+  /* COLOR CLASSES */
+  .bg-gray   { background: #D3D1C7; color: #2C2C2A; }
+  .bg-red    { background: #F7C1C1; color: #501313; }
+  .bg-teal-b { background: #9FE1CB; color: #04342C; }
+  .bg-green  { background: #C0DD97; color: #173404; }
+  .bg-green-l{ background: #EAF3DE; color: #27500A; }
+  .bg-amber  { background: #FAC775; color: #412402; }
+  .bg-amber-l{ background: #FAEEDA; color: #633806; }
+  .bg-coral  { background: #F5C4B3; color: #4A1B0C; }
+  .bg-coral-l{ background: #FAECE7; color: #712B13; }
+  .bg-blue   { background: #B5D4F4; color: #042C53; }
+  .bg-blue-l { background: #E6F1FB; color: #0C447C; }
+  .bg-purple { background: #CECBF6; color: #26215C; }
+  .bg-purple-l{background: #EEEDFE; color: #3C3489; }
+  .bg-pink   { background: #F4C0D1; color: #4B1528; }
+  .bg-pink-l { background: #FBEAF0; color: #72243E; }
+  .bg-mint   { background: #5DCAA5; color: #012E28; }
+  .bg-mint-l { background: #E0FAF9; color: #006b68; }
+
+  /* RULE BAR */
+  .rule-bar {
+    background: var(--ink);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 12px 18px;
+    margin-top: 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+  }
+  .rule-bar-icon { font-size: 18px; flex-shrink: 0; }
+  .rule-bar-title { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+  .rule-bar-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .rule-tag {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 20px;
+    padding: 2px 9px;
+    font-size: 10.5px;
+    font-weight: 600;
+    font-family: monospace;
+    color: #fff;
+  }
+
+  /* SUMMARY TABLE */
+  .summary {
+    margin-top: 28px;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .summary-header {
+    background: var(--gray-l);
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--gray);
+    display: grid;
+    grid-template-columns: 110px 1fr 140px;
+    gap: 12px;
+  }
+  .summary-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 140px;
+    gap: 12px;
+    padding: 9px 16px;
+    border-top: 1px solid var(--border);
+    align-items: center;
+    font-size: 12px;
+  }
+  .summary-row:hover { background: var(--gray-l); }
+  .summary-row.new-row { background: var(--mint-l); }
+  .summary-row.new-row:hover { background: #c8f5f4; }
+  .s-code {
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-block;
+    white-space: nowrap;
+  }
+  .s-action { font-size: 11px; color: var(--gray); }
+
+  @media print {
+    body { background: #fff; }
+    .page { padding: 16px; max-width: 100%; }
+    .card { break-inside: avoid; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="header-title">Statuts d'appels — Campagne CSE</div>
+      <div class="header-sub">Référentiel de qualification · Ringover Business · 14 statuts + tags départements</div>
+    </div>
+    <div class="header-meta">
+      <div class="badge-count">14 statuts actifs</div>
+      <div class="badge-version">✦ Version 2 — RAPL-ELU &amp; RAPL-STD ajoutés</div>
+    </div>
+  </div>
+
+  <!-- CAS 1 -->
+  <div class="section-header">
+    <div class="section-num">1</div>
+    <div class="section-title">Appel non abouti</div>
+    <span class="section-sub">— Personne non jointe, numéro incorrect ou sans réponse</span>
+  </div>
+  <div class="grid">
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-gray">NRP</span>
+        <span class="badge-sub bg-gray">Ne répond pas</span>
+      </div>
+      <div>
+        <div class="card-label">Ne répond pas</div>
+        <div class="card-desc">Le numéro sonne mais personne ne décroche. Aucun répondeur, aucun message.</div>
+        <span class="card-action" style="background:#E1F5EE;color:#085041">↺ Vérification numéro — équipe Nirina</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-gray">FAX</span>
+        <span class="badge-sub bg-gray">Fax / Mauvais n°</span>
+      </div>
+      <div>
+        <div class="card-label">Fax / Numéro incorrect</div>
+        <div class="card-desc">Tonalité fax, numéro inexistant, "n° non attribué" ou erreur réseau.</div>
+        <span class="card-action" style="background:#E1F5EE;color:#085041">↺ Vérification numéro — équipe Nirina</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-red">SUPP</span>
+        <span class="badge-sub bg-red">Suppression</span>
+      </div>
+      <div>
+        <div class="card-label">À supprimer</div>
+        <div class="card-desc">Aucun numéro de remplacement trouvé après vérification. Retrait définitif du fichier.</div>
+        <span class="card-action" style="background:#FCEBEB;color:#791F1F">✗ Sortie du fichier de prospection</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-teal-b">MAJ</span>
+        <span class="badge-sub bg-teal-b">Mis à jour</span>
+      </div>
+      <div>
+        <div class="card-label">Numéro mis à jour</div>
+        <div class="card-desc">Nouveau numéro identifié par l'équipe Nirina. Fiche corrigée, prêt pour recomposition.</div>
+        <span class="card-action" style="background:#E1F5EE;color:#085041">↺ Recomposer avec le nouveau numéro</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CAS 2 -->
+  <div class="section-header">
+    <div class="section-num">2</div>
+    <div class="section-title">Élu CSE joint directement</div>
+    <span class="section-sub">— Le standard transfère l'élu</span>
+    <span class="new-section-badge">✦ mis à jour</span>
+  </div>
+  <div class="grid">
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-green">RDV</span>
+        <span class="badge-sub bg-green">Rendez-vous</span>
+      </div>
+      <div>
+        <div class="card-label">RDV confirmé</div>
+        <div class="card-desc">L'élu accepte un rendez-vous avec le commercial. Mail + invitation + fiche récap envoyés.</div>
+        <span class="card-action bg-green-l">✓ Statut final — dossier complet transmis</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-amber">CSE-NI</span>
+        <span class="badge-sub bg-amber">Non intéressé</span>
+      </div>
+      <div>
+        <div class="card-label">Non intéressé (fiche jaune)</div>
+        <div class="card-desc">L'élu refuse le RDV mais les coordonnées sont collectées. Rappel commercial à J+7.</div>
+        <span class="card-action bg-amber-l">→ Fiche jaune transmise au commercial</span>
+      </div>
+    </div>
+
+    <div class="card new-card">
+      <div class="badge-wrap">
+        <span class="badge bg-mint">RAPL-ELU</span>
+        <span class="new-pill">✦ nouveau</span>
+      </div>
+      <div>
+        <div class="card-label">Rappel demandé par l'élu</div>
+        <div class="card-desc">L'élu est joint mais indisponible maintenant. Il donne lui-même un créneau de rappel précis. Signal positif.</div>
+        <span class="note-oblig">📝 Note obligatoire : date + heure souhaitée + nom de l'élu</span>
+        <span class="priority-flag">⚡ Prioritaire dans la file de rappel</span>
+        <span class="card-action bg-mint-l" style="margin-top:5px">↺ Tâche rappel à la date indiquée</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CAS 3 -->
+  <div class="section-header">
+    <div class="section-num">3</div>
+    <div class="section-title">Blocage au standard</div>
+    <span class="section-sub">— Le standard refuse de transférer ou ne peut pas joindre l'élu</span>
+    <span class="new-section-badge">✦ mis à jour</span>
+  </div>
+  <div class="grid">
+
+    <div class="card new-card">
+      <div class="badge-wrap">
+        <span class="badge bg-mint">RAPL-STD</span>
+        <span class="new-pill">✦ nouveau</span>
+      </div>
+      <div>
+        <div class="card-label">Rappel suggéré par le standard</div>
+        <div class="card-desc">L'élu est absent. C'est le standard qui propose un créneau de rappel. L'élu n'est pas au courant. Signal neutre.</div>
+        <span class="note-oblig">📝 Note obligatoire : date + heure suggérée + nom du standard</span>
+        <span class="card-action bg-coral-l" style="margin-top:5px">↺ Tâche rappel à la date suggérée</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-coral">BLOC</span>
+        <span class="badge-sub bg-coral">Bloqué</span>
+      </div>
+      <div>
+        <div class="card-label">Blocage standard</div>
+        <div class="card-desc">Le standard refuse de transférer ou ne donne aucun créneau. Coordonnées collectées, mail envoyé.</div>
+        <span class="card-action bg-coral-l">↺ Rappel J+2 (48h)</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-coral">BLOC2</span>
+        <span class="badge-sub bg-coral">Toujours bloqué</span>
+      </div>
+      <div>
+        <div class="card-label">Toujours bloqué après rappel</div>
+        <div class="card-desc">L'élu reste inaccessible après le délai de 48h. Coordonnées transmises au commercial.</div>
+        <span class="card-action bg-coral-l">→ Fiche verte transmise au commercial</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CAS 4 -->
+  <div class="section-header">
+    <div class="section-num">4</div>
+    <div class="section-title">Pas de CSE dans l'entreprise</div>
+    <span class="section-sub">— Le standard indique qu'il n'existe pas de CSE</span>
+  </div>
+  <div class="grid">
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-blue">NCSE-50</span>
+        <span class="badge-sub bg-blue">&lt; 50 salariés</span>
+      </div>
+      <div>
+        <div class="card-label">Pas de CSE — moins de 50 sal.</div>
+        <div class="card-desc">Pas de RDV direct. Contact identifié : délégué du personnel ou responsable actions sociales.</div>
+        <span class="card-action bg-blue-l">→ Mail + fiche verte — indiquer "sans CSE"</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-purple">NCSE+50</span>
+        <span class="badge-sub bg-purple">≥ 50 salariés</span>
+      </div>
+      <div>
+        <div class="card-label">Pas de CSE — 50 salariés ou plus</div>
+        <div class="card-desc">Obligation légale : insister pour obtenir l'élu. Si trouvé → cas 2 ou 3. Si toujours sans → procédure 4.1.</div>
+        <span class="card-action bg-purple-l">↺ Reformuler et insister auprès du standard</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CAS PARTICULIER -->
+  <div class="section-header">
+    <div class="section-num" style="background:var(--pink)">⚠</div>
+    <div class="section-title">Cas particulier — CSE centralisé</div>
+    <span class="section-sub">— Le CSE est rattaché à un autre site</span>
+  </div>
+  <div class="grid">
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-pink">CSE-ZONE</span>
+        <span class="badge-sub bg-pink">Dans zone</span>
+      </div>
+      <div>
+        <div class="card-label">CSE centralisé — département en zone</div>
+        <div class="card-desc">Le CSE est rattaché à un autre site dans notre zone de prospection. Appel planifié vers l'élu centralisé.</div>
+        <span class="card-action bg-pink-l">↺ Planifier appel → cas 2</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge-wrap">
+        <span class="badge bg-pink">CSE-HZ</span>
+        <span class="badge-sub bg-pink">Hors zone</span>
+      </div>
+      <div>
+        <div class="card-label">CSE centralisé — hors zone</div>
+        <div class="card-desc">Le département du CSE centralisé est hors de notre zone. Coordonnées complètes transmises à Bruno.</div>
+        <span class="card-action bg-pink-l">→ Fiche transmise à Bruno</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RÈGLE D'OR -->
+  <div class="rule-bar">
+    <div class="rule-bar-icon">📌</div>
+    <div style="flex:1">
+      <div class="rule-bar-title">Règle d'or — 2 tags obligatoires par appel dans Ringover</div>
+      <div style="opacity:.8;font-size:11px">Poser systématiquement : <strong>tag département</strong> + <strong>tag statut</strong>. Un appel sans les 2 tags est invisible dans les statistiques.</div>
+      <div class="rule-bar-tags">
+        <span class="rule-tag">DEP_XX</span>
+        <span class="rule-tag">+</span>
+        <span class="rule-tag">NRP</span>
+        <span class="rule-tag">FAX</span>
+        <span class="rule-tag">SUPP</span>
+        <span class="rule-tag">MAJ</span>
+        <span class="rule-tag">RDV</span>
+        <span class="rule-tag">CSE-NI</span>
+        <span class="rule-tag">RAPL-ELU ✦</span>
+        <span class="rule-tag">RAPL-STD ✦</span>
+        <span class="rule-tag">BLOC</span>
+        <span class="rule-tag">BLOC2</span>
+        <span class="rule-tag">NCSE-50</span>
+        <span class="rule-tag">NCSE+50</span>
+        <span class="rule-tag">CSE-ZONE</span>
+        <span class="rule-tag">CSE-HZ</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLEAU RÉCAPITULATIF -->
+  <div class="summary" style="margin-top:28px">
+    <div class="summary-header">
+      <div>Code statut</div>
+      <div>Signification</div>
+      <div>Action immédiate</div>
+    </div>
+
+    <div class="summary-row"><span class="s-code" style="background:#D3D1C7;color:#2C2C2A">NRP</span><div>Ne répond pas</div><div class="s-action">Vérif. numéro — Nirina</div></div>
+    <div class="summary-row"><span class="s-code" style="background:#D3D1C7;color:#2C2C2A">FAX</span><div>Fax / Numéro incorrect</div><div class="s-action">Vérif. numéro — Nirina</div></div>
+    <div class="summary-row"><span class="s-code" style="background:#F7C1C1;color:#501313">SUPP</span><div>À supprimer — aucun numéro trouvé</div><div class="s-action">Sortie du fichier</div></div>
+    <div class="summary-row"><span class="s-code" style="background:#9FE1CB;color:#04342C">MAJ</span><div>Numéro mis à jour par Nirina</div><div class="s-action">Recomposer</div></div>
+    <div class="summary-row"><span class="s-code" style="background:#C0DD97;color:#173404">RDV</span><div>Rendez-vous confirmé avec l'élu</div><div class="s-action">Dossier complet → commercial</div></div>
+    <div class="summary-row"><span class="s-code" style="background:#FAC775;color:#412402">CSE-NI</span><div>Élu non intéressé — fiche jaune</div><div class="s-action">Rappel commercial J+7</div></div>
+    <div class="summary-row new-row"><span class="s-code" style="background:#5DCAA5;color:#012E28">RAPL-ELU ✦</span><div>Rappel demandé par l'élu lui-même — signal positif</div><div class="s-action">Tâche rappel — prioritaire</div></div>
+    <div class="summary-row new-row"><span class="s-code" style="background:#5DCAA5;color:#012E28">RAPL-STD ✦</span><div>Rappel suggéré par le standard — signal neutre</div><div class="s-action">Tâche rappel — ordre normal</div></div>
+    <div class="summary-row"><span class="s-code" style="background:#F5C4B3;color:#4A1B0C">BLOC</span><div>Bloqué au standard — mail envoyé</div><div class="s-action">Rappel J+2 (48h)</div></div>
+    <div class="summary-row"><span class="s-code" style="background:#F5C4B3;color:#4A1B0C">BLOC2</span><div>Toujours bloqué après rappel J+2</div><div class="s-action">Fiche verte → commercial</div></div>
+    <div class="summary-row"><span class="s-code" style="background:#B5D4F4;color:#042C53">NCSE-50</span><div>Pas de CSE — moins de 50 salariés</div><div class="s-action">Mail + fiche verte "sans CSE"</div></div>
+    <div class="summary-row"><span class="s-code" style="background:#CECBF6;color:#26215C">NCSE+50</span><div>Pas de CSE — 50 salariés ou plus</div><div class="s-action">Insister — obligation légale</div></div>
+    <div class="summary-row"><span class="s-code" style="background:#F4C0D1;color:#4B1528">CSE-ZONE</span><div>CSE centralisé dans notre zone</div><div class="s-action">Planifier appel → cas 2</div></div>
+    <div class="summary-row"><span class="s-code" style="background:#F4C0D1;color:#4B1528">CSE-HZ</span><div>CSE centralisé hors zone</div><div class="s-action">Fiche → Bruno</div></div>
+  </div>
+
+</div>
+</body>
+</html>

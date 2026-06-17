@@ -78,6 +78,47 @@ class StatutPhoningResource extends Resource
                         ->minValue(0),
                 ]),
 
+            Forms\Components\Section::make('Workflow CSE')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\Select::make('groupe')
+                        ->label('Groupe / Cas')
+                        ->options(fn () => \App\Models\WorkflowGroupe::forModelType('prospect')->pluck('label', 'code'))
+                        ->searchable()
+                        ->native(false),
+
+                    Forms\Components\Select::make('pipeline_statut')
+                        ->label('Statut pipeline cible')
+                        ->options(fn () => \App\Models\PipelineStatut::optionsFor('prospect'))
+                        ->searchable()
+                        ->native(false)
+                        ->helperText('Statut prospect appliqué après cet appel'),
+
+                    Forms\Components\Textarea::make('action_immediate')
+                        ->label('Action immédiate')
+                        ->rows(2)
+                        ->columnSpanFull(),
+
+                    Forms\Components\TextInput::make('delai_rappel_jours')
+                        ->label('Relance auto (jours)')
+                        ->numeric()
+                        ->minValue(0),
+
+                    Forms\Components\Select::make('fiche_type')
+                        ->label('Fiche récap')
+                        ->options(['bleue' => 'Bleue (RDV)', 'jaune' => 'Jaune', 'verte' => 'Verte'])
+                        ->native(false),
+
+                    Forms\Components\Toggle::make('note_obligatoire')->label('Note obligatoire'),
+                    Forms\Components\Toggle::make('compte_comme_tentative')->label('Compte comme tentative'),
+                    Forms\Components\Toggle::make('prioritaire')->label('Prioritaire dans la file'),
+                    Forms\Components\Toggle::make('retire_de_file')->label('Retire de la file'),
+
+                    Forms\Components\TextInput::make('message_note_obligatoire')
+                        ->label('Message note obligatoire')
+                        ->columnSpanFull(),
+                ]),
+
             Forms\Components\Toggle::make('actif')
                 ->label('Actif')
                 ->default(true)
@@ -135,6 +176,9 @@ class StatutPhoningResource extends Resource
                         default  => 'gray',
                     })
                     ->formatStateUsing(fn($state) => StatutPhoning::COULEURS[$state] ?? $state),
+
+                Tables\Columns\TextColumn::make('groupe')->label('Cas')->badge()->toggleable(),
+                Tables\Columns\TextColumn::make('pipeline_statut')->label('Pipeline')->fontFamily('mono')->toggleable(),
 
                 Tables\Columns\ToggleColumn::make('actif')
                     ->label('Actif'),

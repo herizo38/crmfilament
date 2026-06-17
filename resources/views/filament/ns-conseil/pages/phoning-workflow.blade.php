@@ -3,7 +3,9 @@
     // Codes déclenchant le bloc rappel/RDV — défini tout en haut car
     // référencé dans le <script> de @push('styles') ci-dessous, qui est
     // évalué avant le bloc @php principal plus bas dans le fichier.
-    $rappelCodes = ['rdv', 'rapl_elu', 'rapl_std', 'cse_ni', 'rp', 'rpc'];
+    $rappelCodes = ['rdv', 'rapl_elu', 'rapl_std', 'cse_ni', 'rp', 'rpc', 'bloc'];
+    $maxTentatives = app(\App\Services\Crm\CrmSettingsService::class)->get('prospection.max_standard_attempts', 3);
+    $tentativesActuelles = $this->getTentativesAppel();
 @endphp
 <x-filament-panels::page>
 
@@ -930,7 +932,8 @@
         $scriptCourant = $this->getScriptCourant();
         $variables = $this->getVariablesScript();
 
-        // Options issue — chargées dynamiquement depuis StatutPhoning
+        // Options issue — groupées par cas CSE v2
+        $statutsGroupes = $this->getStatutsPhoningGroupes();
         $options = $this->getStatutsPhoning();
 
         // Historique d'appels depuis la base
@@ -1589,14 +1592,14 @@ if ($notes) {
                             <span class="pw-nr-subtitle">08:00 – 18:00</span>
                         </div>
                         <div style="display:flex; align-items:baseline; gap:0.375rem; margin-bottom:0.5rem;">
-                            <span class="pw-nr-count">0</span>
-                            <span class="pw-nr-tentatives">/ 3 tentatives</span>
+                            <span class="pw-nr-count">{{ $tentativesActuelles }}</span>
+                            <span class="pw-nr-tentatives">/ {{ $maxTentatives }} tentatives</span>
                         </div>
                         {{-- Mini barre tentatives --}}
                         <div style="display:flex; gap:0.25rem;">
-                            @for ($i = 0; $i < 3; $i++)
+                            @for ($i = 0; $i < $maxTentatives; $i++)
                                 <div
-                                    style="flex:1; height:0.25rem; border-radius:9999px; background:rgb(229 231 235);">
+                                    style="flex:1; height:0.25rem; border-radius:9999px; background:{{ $i < $tentativesActuelles ? 'rgb(249 115 22)' : 'rgb(229 231 235)' }};">
                                 </div>
                             @endfor
                         </div>
@@ -1608,38 +1611,56 @@ if ($notes) {
                         Résultat de l'appel
                     </div>
 
-                    <div style="display:grid; gap:0.375rem;">
-                        @foreach ($options as $option)
-                            @php
-                                $isActive = $statut_resultat === $option['value'];
-                            @endphp
-                            <label wire:click="$set('statut_resultat', '{{ $option['value'] }}')"
-                                onclick="toggleRappel('{{ $option['value'] }}')"
-                                style="display:flex; align-items:center; gap:0.625rem; padding:0.5rem 0.625rem; border-radius:0.5rem; cursor:pointer; transition:all .15s ease;
-                              border:1.5px solid {{ $isActive ? 'currentColor' : 'rgb(226 232 240)' }};
-                              background:{{ $isActive ? 'rgba(0,0,0,0.03)' : 'white' }};
-                              {{ $isActive ? $option['bar'] . '; border-color:' . \Illuminate\Support\Str::after($option['bar'], 'background:') . ';' : '' }}">
-                                <div style="font-size:1.1rem; width:1.5rem; text-align:center; flex-shrink:0;">
-                                    {{ $option['icon'] ?? '•' }}</div>
-                                <div style="flex:1; min-width:0;">
-                                    <div
-                                        style="font-size:0.8125rem; font-weight:600; color:{{ $isActive ? 'white' : 'rgb(30 41 59)' }};">
-                                        {{ $option['label'] }}</div>
-                                    <div
-                                        style="font-size:0.7rem; color:{{ $isActive ? 'rgba(255,255,255,0.8)' : 'rgb(100 116 139)' }};">
-                                        {{ $option['sub'] }}</div>
+                    <div style="display:flex; flex-direction:column; gap:0.875rem;">
+                        @foreach ($statutsGroupes as $groupeKey => $groupe)
+                            <div>
+                                <div style="font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:rgb(100 116 139); margin-bottom:0.375rem; padding-bottom:0.25rem; border-bottom:1px solid rgb(241 245 249);">
+                                    {{ $groupe['label'] }}
                                 </div>
-                                @if ($isActive)
-                                    <svg style="width:1rem;height:1rem;color:white;flex-shrink:0;" fill="currentColor"
-                                        viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                @endif
-                                <input type="radio" wire:model="statut_resultat" value="{{ $option['value'] }}"
-                                    style="display:none;">
-                            </label>
+                                <div style="display:grid; gap:0.375rem;">
+                                    @foreach ($groupe['statuts'] as $option)
+                                        @php
+                                            $isActive = $statut_resultat === $option['value'];
+                                        @endphp
+                                        <label wire:click="$set('statut_resultat', '{{ $option['value'] }}')"
+                                            onclick="toggleRappel('{{ $option['value'] }}')"
+                                            style="display:flex; align-items:center; gap:0.625rem; padding:0.5rem 0.625rem; border-radius:0.5rem; cursor:pointer; transition:all .15s ease;
+                                      border:1.5px solid {{ $isActive ? 'currentColor' : 'rgb(226 232 240)' }};
+                                      background:{{ $isActive ? 'rgba(0,0,0,0.03)' : 'white' }};
+                                      {{ $isActive ? $option['bar'] . '; border-color:' . \Illuminate\Support\Str::after($option['bar'], 'background:') . ';' : '' }}">
+                                            <div style="font-size:1.1rem; width:1.5rem; text-align:center; flex-shrink:0;">
+                                                {{ $option['icon'] ?? '•' }}</div>
+                                            <div style="flex:1; min-width:0;">
+                                                <div
+                                                    style="font-size:0.8125rem; font-weight:600; color:{{ $isActive ? 'white' : 'rgb(30 41 59)' }};">
+                                                    {{ $option['label'] }}
+                                                    @if (!empty($option['prioritaire']))
+                                                        <span style="font-size:0.6rem; background:#E0FAF9; color:#006b68; padding:1px 5px; border-radius:8px; margin-left:4px;">prioritaire</span>
+                                                    @endif
+                                                </div>
+                                                <div
+                                                    style="font-size:0.7rem; color:{{ $isActive ? 'rgba(255,255,255,0.8)' : 'rgb(100 116 139)' }};">
+                                                    {{ $option['sub'] }}</div>
+                                                @if (!empty($option['action']))
+                                                    <div style="font-size:0.65rem; color:{{ $isActive ? 'rgba(255,255,255,0.7)' : 'rgb(148 163 184)' }}; margin-top:2px;">
+                                                        → {{ $option['action'] }}
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            @if ($isActive)
+                                                <svg style="width:1rem;height:1rem;color:white;flex-shrink:0;" fill="currentColor"
+                                                    viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd"
+                                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                        clip-rule="evenodd" />
+                                                </svg>
+                                            @endif
+                                            <input type="radio" wire:model="statut_resultat" value="{{ $option['value'] }}"
+                                                style="display:none;">
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
                         @endforeach
                     </div>
 
@@ -1767,7 +1788,12 @@ if ($notes) {
                         placeholder="Compte rendu : interlocuteur joint, objections, décision, prochaine étape..." class="pw-textarea"></textarea>
 
                     {{-- Validation --}}
-                    @if ($statut_resultat && !$commentaires)
+                    @if ($statut_resultat && in_array($statut_resultat, ['rapl_elu', 'rapl_std']) && !$commentaires)
+                        <div
+                            style="font-size:0.75rem; color:rgb(220 38 38); margin-top:0.5rem; display:flex; align-items:center; gap:0.25rem;">
+                            📝 Note obligatoire : date + heure + nom {{ $statut_resultat === 'rapl_elu' ? 'de l\'élu' : 'du standard' }}.
+                        </div>
+                    @elseif ($statut_resultat && !$commentaires && !in_array($statut_resultat, ['nrp', 'fax', 'maj']))
                         <div
                             style="font-size:0.75rem; color:rgb(249 115 22); margin-top:0.5rem; display:flex; align-items:center; gap:0.25rem;">
                             ⚠ Ajoutez un commentaire avant d'enregistrer.

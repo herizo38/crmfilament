@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Services\AircallService;
+use App\Models\CrmSetting;
+use App\Services\Crm\CrmSettingsService;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
 
@@ -14,6 +16,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(AircallService::class);
+        $this->app->singleton(CrmSettingsService::class);
 
         // Telescope reste un paquet dev (composer require-dev) : on ne
         // l'enregistre qu'en local pour ne jamais casser
@@ -37,5 +40,8 @@ class AppServiceProvider extends ServiceProvider
         Validator::extend('description_p2', function ($attribute, $value) {
             return strlen($value) >= 30;
         }, 'La description doit contenir au minimum 30 caractères.');
+
+        CrmSetting::saved(fn () => app(CrmSettingsService::class)->forget());
+        CrmSetting::deleted(fn () => app(CrmSettingsService::class)->forget());
     }
 }

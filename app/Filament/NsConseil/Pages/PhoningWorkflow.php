@@ -16,6 +16,9 @@ use App\Enums\EventResult;
 use App\Enums\EventType;
 use App\Enums\StatutCampagneProspection;
 use App\Enums\ProspectStatut;
+use App\Support\CsePhoningWorkflow;
+use App\Services\Crm\CrmProfileService;
+use App\Services\Crm\CrmSettingsService;
 use Filament\Pages\Page;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -26,8 +29,9 @@ use Illuminate\Database\Eloquent\Model;
 class PhoningWorkflow extends Page
 {
     // protected static ?string $navigationIcon    = 'heroicon-o-phone-arrow-up-right';
-    // protected static ?string $navigationLabel   = 'Campagne d\'appels';
-    // protected static ?string $navigationGroup   = 'Activités';
+    protected static ?string $navigationLabel   = 'Campagne d\'appels';
+    protected static ?string $navigationGroup   = 'Activités';
+    protected static ?int    $navigationSort    = 3;
     // protected static ?int    $navigationSort    = 2;
     protected static string  $view              = 'filament.ns-conseil.pages.phoning-workflow';
 
@@ -82,12 +86,8 @@ class PhoningWorkflow extends Page
     {
         $user = Auth::user();
 
-        $this->isSupervisorMode = $user?->hasAnyRole([
-            'super_admin',
-            'administrateur',
-            'responsable_plateau',
-            'superviseur',
-        ]) ?? false;
+        $this->isSupervisorMode = app(CrmProfileService::class)
+            ->userHasCapability($user, 'supervisor');
 
         $this->supervisedUserId = $user?->id;
 
@@ -104,9 +104,13 @@ class PhoningWorkflow extends Page
     // Double critère : rôle Spatie OU role_cache pour couvrir les deux cas
     protected function queryTeleprospecteurs()
     {
-        return User::where(function ($q) {
-            $q->whereHas('roles', fn($r) => $r->where('name', User::ROLE_TELEPROSPECTEUR))
-                ->orWhere('role_cache', User::ROLE_TELEPROSPECTEUR);
+        $roles = app(CrmSettingsService::class)->get('roles.teleprospecteur_roles', ['teleprospecteur']);
+
+        return User::where(function ($q) use ($roles) {
+            $q->whereHas('roles', fn ($r) => $r->whereIn('name', $roles));
+            foreach ($roles as $role) {
+                $q->orWhere('role_cache', $role);
+            }
         })
             ->where('actif', true)
             ->orderBy('nom')
@@ -138,21 +142,33 @@ class PhoningWorkflow extends Page
         $ordered  = Cache::get($cacheKey);
 
         if ($ordered) {
-            $this->contactQueue = $this->filterValidQueue($ordered);
+            $this->contactQueue = $this->prioriserFile($this->filterValidQueue($ordered));
             return;
         }
 
         $this->contactQueue = $this->buildDefaultQueue($userId);
+        $this->contactQueue = $this->prioriserFile($this->contactQueue);
     }
 
     protected function filterValidQueue(array $queue): array
     {
-        return collect($queue)->filter(function ($item) {
+        $retireCodes = StatutPhoning::query()
+            ->where('model_type', 'prospect')
+            ->where('retire_de_file', true)
+            ->pluck('code')
+            ->all();
+
+        return collect($queue)->filter(function ($item) use ($retireCodes) {
             return match ($item['type']) {
                 'prospect' => Prospect::where('id', $item['id'])
                     ->whereNotIn('statut', [ProspectStatut::KO->value, ProspectStatut::QF->value])
                     ->whereNull('deleted_at')
-                    ->exists(),
+                    ->exists()
+                    && ! Appel::query()
+                        ->where('appelable_type', Prospect::class)
+                        ->where('appelable_id', $item['id'])
+                        ->whereIn('phoning_status', $retireCodes)
+                        ->exists(),
                 'partenaire' => ContactPartenaire::where('id', $item['id'])
                     ->whereNull('deleted_at')
                     ->exists(),
@@ -190,6 +206,42 @@ class PhoningWorkflow extends Page
         }
 
         return $queue;
+    }
+
+    /**
+     * RAPL-ELU et rappels en retard passent en tête de file (workflow v2).
+     */
+    protected function prioriserFile(array $queue): array
+    {
+        if (empty($queue)) {
+            return $queue;
+        }
+
+        $prioritaires = [];
+        $normaux = [];
+
+        foreach ($queue as $item) {
+            if (($item['type'] ?? '') !== 'prospect') {
+                $normaux[] = $item;
+                continue;
+            }
+
+            $prospect = Prospect::find($item['id']);
+            if (! $prospect) {
+                continue;
+            }
+
+            $estPrioritaire = $prospect->rappel_est_en_retard
+                || ($prospect->rappel_planifie_at && $prospect->rappel_planifie_at->isToday());
+
+            if ($estPrioritaire) {
+                $prioritaires[] = $item;
+            } else {
+                $normaux[] = $item;
+            }
+        }
+
+        return array_merge($prioritaires, $normaux);
     }
 
     // ── Prochain contact ──────────────────────────────────────────────
@@ -430,9 +482,11 @@ class PhoningWorkflow extends Page
 
         $this->validate([
             'statut_resultat'  => 'required|in:' . $codesValides,
-            'commentaires'     => 'nullable|string|max:2000',
+            'commentaires'     => $this->commentaireRequis() ? 'required|string|min:5|max:2000' : 'nullable|string|max:2000',
             'interlocuteur_email'       => 'nullable|email',
             'email_general_standard'    => 'nullable|email',
+        ], [
+            'commentaires.required' => $this->messageCommentaireObligatoire(),
         ]);
 
         match ($this->contactType) {
@@ -503,36 +557,17 @@ class PhoningWorkflow extends Page
     {
         $prospect = $this->currentContact;
 
-        // Mapping 14 statuts CSE → ProspectStatut
-        $nouveauStatut = match ($this->statut_resultat) {
-            // Cas 2 : Élu joint
-            'rdv'         => ProspectStatut::RPC,
-            'cse_ni'      => ProspectStatut::RP,
-            'rapl_elu'    => ProspectStatut::RP,
-            // Cas 3 : Blocage standard
-            'rapl_std'    => ProspectStatut::STD_Joint,
-            'bloc'        => ProspectStatut::STD_Joint,
-            'bloc2'       => ProspectStatut::CSE_NR,
-            // Cas 4 : Pas de CSE
-            'ncse_50'     => ProspectStatut::CSE_NR,
-            'ncse_plus50' => ProspectStatut::STD_Joint,
-            // Cas particulier : CSE centralisé
-            'cse_zone'    => ProspectStatut::STD_Joint,
-            'cse_hz'      => ProspectStatut::KO,
-            // Cas 1 : Appel non abouti
-            'nrp'         => ProspectStatut::STD_NR,
-            'fax'         => ProspectStatut::STD_NR,
-            'maj'         => ProspectStatut::AC,
-            'supp'        => ProspectStatut::KO,
-            // Anciens codes (rétrocompatibilité)
-            'rp'          => ProspectStatut::RP,
-            'rpc'         => ProspectStatut::RPC,
-            'std_joint'   => ProspectStatut::STD_Joint,
-            'std_nr'      => ProspectStatut::STD_NR,
-            'cse_nr'      => ProspectStatut::CSE_NR,
-            'ko'          => ProspectStatut::KO,
-            default       => ProspectStatut::AC,
-        };
+        $statutMeta = StatutPhoning::where('model_type', 'prospect')
+            ->where('code', $this->statut_resultat)
+            ->first();
+
+        $nouveauStatut = $statutMeta?->pipeline_statut
+            ? ProspectStatut::tryFrom($statutMeta->pipeline_statut)
+            : null;
+
+        if (! $nouveauStatut) {
+            $nouveauStatut = ProspectStatut::AC;
+        }
 
         $note = $this->getResultLabel();
         if ($this->commentaires) $note .= " — {$this->commentaires}";
@@ -564,28 +599,92 @@ class PhoningWorkflow extends Page
         }
         $prospect->marquerContact();
 
-        // Planifier le rappel pour les codes qui génèrent une fiche ou un créneau
-        $codesRappel = ['rdv', 'rapl_elu', 'rapl_std', 'cse_ni', 'rp', 'rpc'];
-        if (in_array($this->statut_resultat, $codesRappel) && $this->rappel_date) {
-            try {
-                $fmt = 'Y-m-d' . ($this->rappel_heure ? ' H:i' : '');
-                $val = $this->rappel_date . ($this->rappel_heure ? ' ' . $this->rappel_heure : '');
-                $dt  = \DateTime::createFromFormat($fmt, $val);
-                if ($dt) $prospect->programmerRappel($dt);
-            } catch (\Exception) {
+        // Planifier le rappel selon paramètres back-office
+        if ($this->rappel_date) {
+            $this->appliquerRappelProspect($prospect);
+        } elseif ($statutMeta?->delai_rappel_jours) {
+            $prospect->programmerRappel(now()->addDays($statutMeta->delai_rappel_jours));
+        } elseif ($statutMeta?->compte_comme_tentative) {
+            $max = (int) app(CrmSettingsService::class)->get('prospection.max_standard_attempts', 3);
+            $tentatives = $this->compterTentativesNonAbouties($prospect) + 1;
+            if ($tentatives >= $max) {
+                $stdNr = ProspectStatut::tryFrom('STD_NR') ?? ProspectStatut::STD_NR;
+                $prospect->changerStatut($stdNr, "{$max} tentatives sans réponse");
+                $jours = (int) app(CrmSettingsService::class)->get('prospection.std_nr_reminder_days', 2);
+                $prospect->programmerRappel(now()->addDays($jours));
             }
         }
+    }
+
+    protected function appliquerRappelProspect(Prospect $prospect): void
+    {
+        try {
+            $fmt = 'Y-m-d' . ($this->rappel_heure ? ' H:i' : '');
+            $val = $this->rappel_date . ($this->rappel_heure ? ' ' . $this->rappel_heure : '');
+            $dt  = \DateTime::createFromFormat($fmt, $val);
+            if ($dt) {
+                $prospect->programmerRappel($dt);
+            }
+        } catch (\Exception) {
+        }
+    }
+
+    protected function commentaireRequis(): bool
+    {
+        if (blank($this->statut_resultat)) {
+            return false;
+        }
+
+        $statut = StatutPhoning::where('model_type', $this->contactType ?: 'prospect')
+            ->where('code', $this->statut_resultat)
+            ->first();
+
+        return (bool) ($statut?->note_obligatoire);
+    }
+
+    protected function messageCommentaireObligatoire(): string
+    {
+        $statut = StatutPhoning::where('model_type', $this->contactType ?: 'prospect')
+            ->where('code', $this->statut_resultat)
+            ->first();
+
+        if ($statut?->message_note_obligatoire) {
+            return 'Note obligatoire : ' . $statut->message_note_obligatoire;
+        }
+
+        return 'Un commentaire est obligatoire pour ce statut.';
+    }
+
+    public function compterTentativesNonAbouties(?Model $contact = null): int
+    {
+        $contact = $contact ?? $this->currentContact;
+        if (! $contact) {
+            return 0;
+        }
+
+        $codes = StatutPhoning::where('model_type', 'prospect')
+            ->where('compte_comme_tentative', true)
+            ->pluck('code')
+            ->toArray();
+
+        if (empty($codes)) {
+            $codes = ['nrp', 'fax', 'std_nr'];
+        }
+
+        return Appel::where('appelable_type', get_class($contact))
+            ->where('appelable_id', $contact->id)
+            ->whereIn('phoning_status', $codes)
+            ->count();
     }
 
     // ── Fiches récap ──────────────────────────────────────────────────
     protected function determineFicheType(): ?string
     {
-        return match ($this->statut_resultat) {
-            'rdv'                                          => 'bleue',
-            'cse_ni'                                       => 'jaune',
-            'bloc2', 'ncse_50', 'ncse_plus50', 'cse_zone' => 'verte',
-            default                                        => null,
-        };
+        $statut = StatutPhoning::where('model_type', $this->contactType ?: 'prospect')
+            ->where('code', $this->statut_resultat)
+            ->first();
+
+        return $statut?->fiche_type;
     }
 
     protected function buildFicheData(string $ficheType): array
@@ -743,16 +842,53 @@ class PhoningWorkflow extends Page
                 'value'   => $s->code,
                 'label'   => $s->label,
                 'sub'     => $s->description,
+                'action'  => $s->action_immediate,
                 'couleur' => $s->couleur,
                 'bar'     => $s->couleur_css,
                 'icon'    => $s->icone,
+                'note_obligatoire' => $s->note_obligatoire,
+                'prioritaire' => $s->prioritaire,
+                'fiche_type' => $s->fiche_type,
+                'groupe' => $s->groupe,
+                'groupe_label' => $s->groupe_label,
             ])
             ->toArray();
+    }
+
+    /**
+     * Statuts prospect groupés par cas (workflow CSE v2).
+     *
+     * @return array<string, array{label: string, statuts: list<array>}>
+     */
+    public function getStatutsPhoningGroupes(): array
+    {
+        if (($this->contactType ?: 'prospect') !== 'prospect') {
+            return ['default' => ['label' => 'Résultats', 'statuts' => $this->getStatutsPhoning()]];
+        }
+
+        return CsePhoningWorkflow::statutsGroupesPourProspect();
+    }
+
+    public function getTentativesAppel(): int
+    {
+        return $this->compterTentativesNonAbouties();
     }
 
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('workflow_cse')
+                ->label('Workflow CSE v2')
+                ->icon('heroicon-o-map')
+                ->url(fn () => WorkflowProspectionCse::getUrl())
+                ->openUrlInNewTab(),
+
+            Action::make('statuts_cse')
+                ->label('Statuts CSE v2')
+                ->icon('heroicon-o-tag')
+                ->url(fn () => StatutsAppelsCse::getUrl())
+                ->openUrlInNewTab(),
+
             Action::make('refresh')
                 ->label('Rafraîchir')
                 ->icon('heroicon-o-arrow-path')

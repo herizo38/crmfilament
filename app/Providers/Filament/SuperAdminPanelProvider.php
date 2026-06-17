@@ -42,6 +42,8 @@ class SuperAdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 NavigationGroup::make('Utilisateurs & Accès')
                     ->icon('heroicon-o-shield-check'),
+                NavigationGroup::make('Paramétrage CRM')
+                    ->icon('heroicon-o-adjustments-horizontal'),
                 NavigationGroup::make('Base de données')
                     ->icon('heroicon-o-circle-stack'),
                 NavigationGroup::make('Système')

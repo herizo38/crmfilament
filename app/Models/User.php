@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use App\Services\Crm\CrmProfileService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
@@ -63,33 +64,7 @@ class User extends Authenticatable implements FilamentUser
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return match ($panel->getId()) {
-            'super-admin' => $this->roles->pluck('name')
-                ->intersect(['super_admin', 'administrateur'])->isNotEmpty() && $this->actif,
-
-            'ns-conseil' => $this->hasAnyRole([
-                'administrateur',
-                'team_leader',
-                'commercial',
-                'superviseur',
-                'responsable',
-                'teleprospecteur',
-            ]),
-
-            'allopro' => $this->hasAnyRole([
-                'operateur_n1',
-                'back_office',
-                'administrateur',
-                'superviseur',
-                'teleprospecteur',
-                'responsable_plateau',
-            ]),
-
-            'admin' => $this->roles->pluck('name')
-                ->intersect(['super_admin', 'administrateur'])->isNotEmpty() && $this->actif,
-
-            default => false,
-        };
+        return app(CrmProfileService::class)->userCanAccessPanel($this, $panel->getId());
     }
 
 
