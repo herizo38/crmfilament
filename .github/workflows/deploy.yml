@@ -1,0 +1,79 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Hestia VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, bcmath, ctype, fileinfo, openssl, pdo, tokenizer, xml
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install PHP dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+      - name: Install Node dependencies & build assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          script: |
+            set -e
+            cd /home/contact/web/crm-v2.mbl-service.com/public_html
+
+            echo "==> Pulling latest code..."
+            git pull origin main
+
+            echo "==> Installing PHP dependencies..."
+            composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+            echo "==> Installing Node dependencies & building assets..."
+            npm ci
+            npm run build
+
+            echo "==> Putting app in maintenance mode..."
+            php artisan down --retry=60
+
+            echo "==> Running database migrations..."
+            php artisan migrate --force
+
+            echo "==> Clearing & rebuilding caches..."
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan icons:cache
+            php artisan filament:cache-components
+
+            echo "==> Fixing permissions..."
+            chown -R contact:contact storage bootstrap/cache
+            chmod -R 775 storage bootstrap/cache
+
+            echo "==> Bringing app back online..."
+            php artisan up
+
+            echo "==> Deployment complete!"

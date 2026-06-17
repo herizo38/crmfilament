@@ -6,6 +6,7 @@ use App\Enums\OrganizationType;
 use App\Enums\ProspectStatut;
 use App\Models\Prospect;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 class ProspectImporter
 {
@@ -16,6 +17,7 @@ class ProspectImporter
 
     protected array $columnMapping = [];
     protected array $defaults      = [];
+    protected array $rowWarnings   = [];
 
     public static function getRequiredColumns(): array
     {
@@ -44,7 +46,12 @@ class ProspectImporter
             }
 
             try {
+                $this->rowWarnings = [];
                 $data = $this->mapRow($row);
+
+                foreach ($this->rowWarnings as $warning) {
+                    $this->errors[] = "Ligne " . ($i + 1) . " : {$warning}";
+                }
 
                 if (empty($data['nom'])) {
                     $this->skipped++;
@@ -104,6 +111,26 @@ class ProspectImporter
         return true;
     }
 
+    // ── Normalisation pour la reconnaissance d'en-têtes ────────────────
+    // Supprime accents, apostrophes, espaces, underscores… afin que
+    // "Chiffred'affaires" et "Chiffre d'affaires" (ou "CA") soient
+    // reconnus comme la même colonne, quel que soit le modèle de fichier.
+    protected function normalizeForMatch(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+
+        $value = strtr($value, [
+            'à' => 'a', 'â' => 'a', 'ä' => 'a',
+            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'î' => 'i', 'ï' => 'i',
+            'ô' => 'o', 'ö' => 'o',
+            'ù' => 'u', 'û' => 'u', 'ü' => 'u',
+            'ç' => 'c', 'œ' => 'oe', '’' => "'",
+        ]);
+
+        return preg_replace('/[^a-z0-9]+/', '', $value) ?? '';
+    }
+
     // ── Mapping colonnes ──────────────────────────────────────────────
     protected function buildColumnMapping(array $headerRow): void
     {
@@ -112,6 +139,9 @@ class ProspectImporter
             'nom' => [
                 'nom', 'raison sociale', 'raison_sociale', 'entreprise',
                 'organisation', 'entite', 'entité',
+            ],
+            'numero_ordre' => [
+                'n°', 'numero', 'numéro', 'numero_ordre', 'ordre',
             ],
             'type_pressenti' => [
                 'type', 'type pressenti', 'type_pressenti', 'categorie', 'catégorie',
@@ -146,9 +176,13 @@ class ProspectImporter
             // ── Pipeline ─────────────────────────────────────────────
             'statut'              => ['statut', 'etat', 'état', 'situation'],
             'teleprospecteur'     => ['conseiller', 'téléprospecteur', 'teleprospecteur', 'agent'],
+            'commercial'          => ['commercial', 'commercial assigné', 'commercial_id'],
+            'date_premier_contact' => [
+                'date de 1er contact', 'date de premier contact', 'date premier contact',
+                '1er contact', 'date de contact',
+            ],
             'rappel_planifie_at'  => [
                 'rappel', 'date rappel', 'rappel planifié', 'date de rappel',
-                'date de 1er contact', 'date_contact', 'date',
             ],
             'description' => [
                 'commentaire', 'commentaires', 'notes', 'description',
@@ -194,16 +228,37 @@ class ProspectImporter
             'syndicat_notes'                => ['notes syndicat', 'syndicat notes', 'commentaires syndicat'],
         ];
 
-        $normalizedHeader = array_map(
-            fn($col) => mb_strtolower(trim((string) $col)),
-            $headerRow
-        );
+        // En-têtes normalisés une seule fois.
+        $normalizedHeader = [];
+        foreach ($headerRow as $colIndex => $colName) {
+            $normalizedHeader[$colIndex] = $this->normalizeForMatch((string) $colName);
+        }
+
+        // Verrou anti-collision : une colonne déjà attribuée à un champ
+        // ne peut plus être reprise par un autre champ (évite qu'un alias
+        // trop générique ne « vole » une colonne destinée à un autre champ).
+        $usedColumns = [];
 
         foreach ($fieldAliases as $field => $aliases) {
+            $normalizedAliases = array_map(fn($a) => $this->normalizeForMatch($a), $aliases);
+
             foreach ($normalizedHeader as $colIndex => $colName) {
-                foreach ($aliases as $alias) {
-                    if ($colName === $alias || str_contains($colName, $alias)) {
+                if ($colName === '' || in_array($colIndex, $usedColumns, true)) {
+                    continue;
+                }
+
+                foreach ($normalizedAliases as $alias) {
+                    if ($alias === '') continue;
+
+                    // Les alias très courts (≤2 caractères, ex: "ca", "cp")
+                    // exigent une égalité stricte pour éviter les faux positifs ;
+                    // les alias plus longs et distinctifs peuvent matcher en inclusion.
+                    $isMatch = ($colName === $alias)
+                        || (mb_strlen($alias) >= 3 && str_contains($colName, $alias));
+
+                    if ($isMatch) {
                         $this->columnMapping[$field] = $colIndex;
+                        $usedColumns[] = $colIndex;
                         break 2;
                     }
                 }
@@ -228,11 +283,16 @@ class ProspectImporter
         $statut = $this->resolveStatut($get('statut'))
             ?? ($this->defaults['statut'] ?? ProspectStatut::AC->value);
 
-        $teleprospecteurId = $this->resolveUserId($get('teleprospecteur'));
+        $conseillerBrut    = $get('teleprospecteur');
+        $teleprospecteurId = $this->resolveOrCreateUserId($conseillerBrut, User::ROLE_COMMERCIAL);
+
+        $commercialBrut = $get('commercial');
+        $commercialId   = $this->resolveOrCreateUserId($commercialBrut, User::ROLE_COMMERCIAL);
 
         $data = [
             // ── Identification ──────────────────────────────────────
             'nom'              => $get('nom'),
+            'numero_ordre'     => $this->cleanInt($get('numero_ordre')),
             'type_pressenti'   => $this->resolveType($get('type_pressenti'))
                                     ?? ($this->defaults['type_pressenti'] ?? null),
             'siret'            => $this->cleanSiret($get('siret')),
@@ -256,10 +316,12 @@ class ProspectImporter
             'interlocuteur_email'     => $get('interlocuteur_email'),
 
             // ── Pipeline ─────────────────────────────────────────────
-            'statut'             => $statut,
-            'teleprospecteur_id' => $teleprospecteurId ?? ($this->defaults['teleprospecteur_id'] ?? null),
-            'rappel_planifie_at' => $this->parseDate($get('rappel_planifie_at')),
-            'description'        => $get('description'),
+            'statut'              => $statut,
+            'teleprospecteur_id'  => $teleprospecteurId ?? ($this->defaults['teleprospecteur_id'] ?? null),
+            'commercial_id'       => $commercialId ?? ($this->defaults['commercial_id'] ?? null),
+            'date_premier_contact' => $this->parseDate($get('date_premier_contact')),
+            'rappel_planifie_at'  => $this->parseDate($get('rappel_planifie_at')),
+            'description'         => $get('description'),
 
             // ── Dirigeant ────────────────────────────────────────────
             'dirigeant_nom'       => $get('dirigeant_nom'),
@@ -369,6 +431,74 @@ class ProspectImporter
         return $query->value('id');
     }
 
+    // ── Crée automatiquement le User s'il n'existe pas ─────────────────
+    // Retente d'abord resolveUserId() (recherche large par nom + rôles
+    // autorisés). Si rien n'est trouvé, crée un compte avec le rôle
+    // demandé (nom/prénom/role_cache servent de clé d'unicité, donc une
+    // seule création même si le même nom apparaît sur des dizaines de
+    // lignes ou sur plusieurs feuilles/imports).
+    protected function resolveOrCreateUserId(?string $name, string $roleCacheSiNouveau): ?int
+    {
+        if (empty($name)) return null;
+
+        $existingId = $this->resolveUserId($name);
+        if ($existingId) return $existingId;
+
+        [$prenom, $nom] = $this->splitNomPrenom($name);
+
+        if (empty($nom) && empty($prenom)) {
+            $this->rowWarnings[] = "Avertissement : \"{$name}\" n'a pas pu être interprété comme un nom — "
+                . "valeur par défaut du formulaire appliquée à la place.";
+            return null;
+        }
+
+        $user = User::firstOrCreate(
+            [
+                'nom'        => $nom,
+                'prenom'     => $prenom,
+                'role_cache' => $roleCacheSiNouveau,
+            ],
+            [
+                'email'    => $this->generatePlaceholderEmail($prenom, $nom),
+                'password' => Str::random(32),
+                'actif'    => false,
+            ]
+        );
+
+        if ($user->wasRecentlyCreated) {
+            $label = User::ROLES[$roleCacheSiNouveau] ?? $roleCacheSiNouveau;
+            $this->rowWarnings[] = "Info : \"{$name}\" introuvable en base — nouveau compte {$label} "
+                . "créé automatiquement (#{$user->id}, email placeholder, compte inactif) — à vérifier/compléter manuellement.";
+        }
+
+        return $user->id;
+    }
+
+    protected function splitNomPrenom(string $name): array
+    {
+        $parts = preg_split('/\s+/', trim($name));
+        $parts = array_filter($parts, fn($p) => $p !== '');
+        $parts = array_values($parts);
+
+        if (count($parts) >= 2) {
+            $prenom = $parts[0];
+            $nom    = implode(' ', array_slice($parts, 1));
+        } else {
+            $prenom = null;
+            $nom    = $parts[0] ?? null;
+        }
+
+        return [$prenom, $nom];
+    }
+
+    protected function generatePlaceholderEmail(?string $prenom, ?string $nom): string
+    {
+        $slug = Str::slug(trim(($prenom ?? '') . ' ' . ($nom ?? '')), '.');
+        $slug = $slug !== '' ? $slug : 'utilisateur';
+
+        return "{$slug}." . Str::random(6) . '@import.local';
+    }
+
     protected function extractDepartement(?string $value): ?string
     {
         if (empty($value)) return null;
@@ -413,20 +543,42 @@ class ProspectImporter
         return $digits !== '' ? str_pad($digits, 14, '0', STR_PAD_LEFT) : null;
     }
 
+    // ── Gère désormais les tranches ("500 à 999", "3-5") en prenant
+    // le milieu de la fourchette, au lieu de concaténer les chiffres.
     protected function cleanInt(mixed $value): ?int
     {
         if ($value === null || $value === '') return null;
-        $digits = preg_replace('/[^\d]/', '', (string) $value);
+
+        $str = trim((string) $value);
+
+        if (preg_match('/(\d[\d\s]*)\s*(?:à|a|-|–|—|to)\s*(\d[\d\s]*)$/ui', $str, $m)) {
+            $low  = (int) preg_replace('/\D/', '', $m[1]);
+            $high = (int) preg_replace('/\D/', '', $m[2]);
+            if ($high > 0) {
+                return intdiv($low + $high, 2);
+            }
+        }
+
+        $digits = preg_replace('/[^\d]/', '', $str);
         return $digits !== '' ? (int) $digits : null;
     }
 
+    // ── Tolère désormais les caractères parasites en fin de valeur
+    // (ex: "1 940 346 800,00 €." avec un point après le symbole monétaire).
     protected function cleanDecimal(mixed $value): ?string
     {
         if ($value === null || $value === '') return null;
-        $clean = preg_replace('/\s/', '', (string) $value);
-        $clean = str_replace(',', '.', $clean);
-        $clean = preg_replace('/[^\d.]/', '', $clean);
-        return is_numeric($clean) ? $clean : null;
+
+        $str = (string) $value;
+        $str = preg_replace('/\s+/', '', $str);
+        $str = preg_replace('/[^\d,.\-]/', '', $str);
+        $str = str_replace(',', '.', $str);
+
+        if (preg_match('/-?\d+(\.\d+)?/', $str, $m)) {
+            return $m[0];
+        }
+
+        return null;
     }
 
     // ── Nouveau : nettoyage booléen ───────────────────────────────────

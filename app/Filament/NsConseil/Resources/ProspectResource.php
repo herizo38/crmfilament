@@ -261,19 +261,10 @@ class ProspectResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('nom')
+                    ->label("Nom de l'entité")
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
-
-                Tables\Columns\TextColumn::make('departement')
-                    ->label('Dép.')
-                    ->alignCenter()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('telephone')
-                    ->label('Téléphone')
-                    ->copyable()
-                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('statut')
                     ->label('Statut')
@@ -290,20 +281,43 @@ class ProspectResource extends Resource
                     ),
 
                 Tables\Columns\TextColumn::make('teleprospecteur.nom')
-                    ->label('Téléprospecteur')
+                    ->label('Commercial')
+                    ->icon('heroicon-m-user')
                     ->formatStateUsing(fn($record) => $record->teleprospecteur
                         ? "{$record->teleprospecteur->prenom} {$record->teleprospecteur->nom}"
-                        : '—'),
+                        : '—')
+                    ->searchable(query: fn(Builder $q, string $search) => $q->whereHas(
+                        'teleprospecteur',
+                        fn(Builder $q2) => $q2->where('nom', 'like', "%{$search}%")
+                            ->orWhere('prenom', 'like', "%{$search}%")
+                    ))
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('departement')
+                    ->label('Dép.')
+                    ->alignCenter()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('ville')
+                    ->label('Ville')
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('telephone')
+                    ->label('Téléphone')
+                    ->copyable()
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('rappel_planifie_at')
                     ->label('Rappel le')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
+                    ->placeholder('—')
                     ->color(fn($state) => $state && $state instanceof \Carbon\Carbon && $state->isPast() ? 'danger' : null),
 
                 Tables\Columns\IconColumn::make('qf_valide')
                     ->label('QF')
-                    ->boolean(),
+                    ->boolean()
+                    ->toggleable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('statut')
@@ -316,7 +330,11 @@ class ProspectResource extends Resource
 
                 Tables\Filters\SelectFilter::make('teleprospecteur_id')
                     ->relationship('teleprospecteur', 'nom')
-                    ->label('Téléprospecteur'),
+                    ->label('Commercial'),
+
+                Tables\Filters\SelectFilter::make('commercial_id')
+                    ->relationship('commercial', 'nom')
+                    ->label('Commercial (QF)'),
 
                 Tables\Filters\Filter::make('a_relancer')
                     ->label('À relancer')
@@ -576,49 +594,53 @@ class ProspectResource extends Resource
                 ->icon('heroicon-o-chart-bar-square')
                 ->collapsible()
                 ->schema([
-                    Grid::make(3)->schema([
-                        TextEntry::make('teleprospecteur.nom')
-                            ->label('Téléprospecteur assigné')
-                            ->formatStateUsing(
-                                fn($record) => $record->teleprospecteur
-                                    ? "{$record->teleprospecteur->prenom} {$record->teleprospecteur->nom}"
-                                    : '—'
-                            )
-                            ->icon('heroicon-m-user')
-                            ->placeholder('—'),
+                    Grid::make(2)->schema([
+                        Group::make([
+                            TextEntry::make('teleprospecteur.nom')
+                                ->label('Commercial')
+                                ->formatStateUsing(
+                                    fn($record) => $record->teleprospecteur
+                                        ? "{$record->teleprospecteur->prenom} {$record->teleprospecteur->nom}"
+                                        : '—'
+                                )
+                                ->icon('heroicon-m-user')
+                                ->placeholder('—'),
 
-                        TextEntry::make('commercial.nom')
-                            ->label('Commercial assigné')
-                            ->formatStateUsing(
-                                fn($record) => $record->commercial
-                                    ? "{$record->commercial->prenom} {$record->commercial->nom}"
-                                    : '—'
-                            )
-                            ->icon('heroicon-m-briefcase')
-                            ->placeholder('—'),
+                            TextEntry::make('commercial.nom')
+                                ->label('Commercial (validation QF)')
+                                ->formatStateUsing(
+                                    fn($record) => $record->commercial
+                                        ? "{$record->commercial->prenom} {$record->commercial->nom}"
+                                        : '—'
+                                )
+                                ->icon('heroicon-m-briefcase')
+                                ->placeholder('—'),
+                        ])->label('Assignation'),
 
-                        TextEntry::make('date_premier_contact')
-                            ->label('Premier contact')
-                            ->date('d/m/Y')
-                            ->placeholder('Jamais contacté')
-                            ->icon('heroicon-m-calendar'),
+                        Group::make([
+                            TextEntry::make('date_premier_contact')
+                                ->label('Premier contact')
+                                ->date('d/m/Y')
+                                ->placeholder('Jamais contacté')
+                                ->icon('heroicon-m-calendar'),
 
-                        TextEntry::make('rappel_planifie_at')
-                            ->label('Rappel planifié')
-                            ->dateTime('d/m/Y à H:i')
-                            ->placeholder('Aucun rappel planifié')
-                            ->icon('heroicon-m-clock')
-                            ->color(fn(Prospect $r) => $r->rappel_est_en_retard ? 'danger' : null),
+                            TextEntry::make('rappel_planifie_at')
+                                ->label('Rappel planifié')
+                                ->dateTime('d/m/Y à H:i')
+                                ->placeholder('Aucun rappel planifié')
+                                ->icon('heroicon-m-clock')
+                                ->color(fn(Prospect $r) => $r->rappel_est_en_retard ? 'danger' : null),
 
-                        TextEntry::make('dernier_contact')
-                            ->label('Dernier contact')
-                            ->state(fn(Prospect $r) => $r->dernier_contact ?? 'Jamais')
-                            ->icon('heroicon-m-arrow-path'),
+                            TextEntry::make('dernier_contact')
+                                ->label('Dernier contact')
+                                ->state(fn(Prospect $r) => $r->dernier_contact ?? 'Jamais')
+                                ->icon('heroicon-m-arrow-path'),
 
-                        TextEntry::make('created_at')
-                            ->label('Créé le')
-                            ->dateTime('d/m/Y à H:i')
-                            ->icon('heroicon-m-plus-circle'),
+                            TextEntry::make('created_at')
+                                ->label('Créé le')
+                                ->dateTime('d/m/Y à H:i')
+                                ->icon('heroicon-m-plus-circle'),
+                        ])->label('Suivi'),
                     ]),
                 ]),
 
