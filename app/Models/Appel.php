@@ -13,13 +13,13 @@ class Appel extends Model
     protected $table = 'appels';
 
     protected $casts = [
-        'type' => EventType::class,
-        'resultat' => EventResult::class,
-        'date_heure' => 'datetime',
+        'type'           => EventType::class,
+        'resultat'       => EventResult::class,
+        'date_heure'     => 'datetime',
         'duree_secondes' => 'integer',
+        'fiche_data'     => 'array',
     ];
 
-    // app/Models/Appel.php
     protected $fillable = [
         'appelable_type',
         'appelable_id',
@@ -35,10 +35,19 @@ class Appel extends Model
         'aircall_number_id',
         'direction',
         'numero_appelant',
-        'aircall_user_id',
         'aircall_email',
         'aircall_agent_nom',
         'campagne_id',
+        // Champs phoning workflow
+        'phoning_status',
+        'phoning_result',
+        'phoning_notes',
+        'phoning_completed_at',
+        'phoning_skipped_at',
+        'phoning_agent_id',
+        // Fiches récap
+        'fiche_type',
+        'fiche_data',
     ];
 
     // ── Accesseurs ──────────────────────────────────────────────────

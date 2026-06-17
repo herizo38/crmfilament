@@ -96,6 +96,10 @@ class Prospect extends Model
         'raison_sociale',
         'campagne_id',
         'converti_partenaire_id',
+        // Interlocuteur Standard
+        'nom_interlocuteur_standard',
+        'creneaux_permanence_cse',
+        'email_general_standard',
     ];
 
     // ── Accesseurs ──────────────────────────────────────────────────

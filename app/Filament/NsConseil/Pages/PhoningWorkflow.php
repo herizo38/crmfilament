@@ -10,6 +10,7 @@ use App\Models\ContactPartenaire;
 use App\Models\ContactParticulier;
 use App\Models\Prospect;
 use App\Models\ScriptAppel;
+use App\Models\StatutPhoning;
 use App\Models\User;
 use App\Enums\EventResult;
 use App\Enums\EventType;
@@ -38,6 +39,30 @@ class PhoningWorkflow extends Page
     public string $statut_resultat = '';
     public string $rappel_date     = '';
     public string $rappel_heure    = '';
+
+    // ── Champs Interlocuteur Standard (prospect) ──────────────────────
+    public string $nom_interlocuteur_standard = '';
+    public string $creneaux_permanence_cse    = '';
+    public string $email_general_standard     = '';
+
+    // ── Champs Interlocuteur CSE (prospect) ──────────────────────────
+    public string $interlocuteur_nom       = '';
+    public string $interlocuteur_fonction  = '';
+    public string $interlocuteur_telephone = '';
+    public string $interlocuteur_email     = '';
+
+    // ── Fiche Bleue (RDV confirmé) ───────────────────────────────────
+    public string $lieu_rdv                   = '';
+    public bool   $invitation_agenda_envoyee  = false;
+    public bool   $enregistrement_appel_joint = false;
+    public string $enregistrement_raison      = '';
+    public string $besoins_exprimes           = '';
+    public string $objections_soulevees       = '';
+    public string $points_attention_rdv       = '';
+
+    // ── Fiche Verte (RDV à conclure) ─────────────────────────────────
+    public string $presence_cse     = '';
+    public string $jour_dispo_appel = '';
 
     public string $activeScriptTab = 'accroche';
 
@@ -205,7 +230,28 @@ class PhoningWorkflow extends Page
         $this->currentContactData = $this->buildContactData($model, $next['type']);
         $this->loadScripts();
 
-        $this->reset(['commentaires', 'statut_resultat', 'rappel_date', 'rappel_heure']);
+        $this->reset([
+            'commentaires', 'statut_resultat', 'rappel_date', 'rappel_heure',
+            'nom_interlocuteur_standard', 'creneaux_permanence_cse', 'email_general_standard',
+            'interlocuteur_nom', 'interlocuteur_fonction', 'interlocuteur_telephone', 'interlocuteur_email',
+            // Fiche Bleue
+            'lieu_rdv', 'invitation_agenda_envoyee', 'enregistrement_appel_joint',
+            'enregistrement_raison', 'besoins_exprimes', 'objections_soulevees', 'points_attention_rdv',
+            // Fiche Verte
+            'presence_cse', 'jour_dispo_appel',
+        ]);
+
+        // Pre-fill prospect interlocutor fields from the loaded model
+        if ($next['type'] === 'prospect' && $model instanceof Prospect) {
+            $this->nom_interlocuteur_standard = $model->nom_interlocuteur_standard ?? '';
+            $this->creneaux_permanence_cse    = $model->creneaux_permanence_cse ?? '';
+            $this->email_general_standard     = $model->email_general_standard ?? '';
+            $this->interlocuteur_nom          = $model->interlocuteur_nom ?? '';
+            $this->interlocuteur_fonction     = $model->interlocuteur_fonction ?? '';
+            $this->interlocuteur_telephone    = $model->interlocuteur_telephone ?? '';
+            $this->interlocuteur_email        = $model->interlocuteur_email ?? '';
+        }
+
         $this->activeScriptTab = 'accroche';
     }
 
@@ -372,13 +418,21 @@ class PhoningWorkflow extends Page
     {
         if (! $this->currentContact) return;
 
-        $statutsValides = $this->contactType === 'client'
-            ? 'required|in:std_nr,rp,ko'
-            : 'required|in:std_nr,std_joint,cse_nr,rp,rpc,ko';
+        $codesValides = StatutPhoning::forModelType($this->contactType)
+            ->pluck('code')
+            ->implode(',');
+
+        if (empty($codesValides)) {
+            $codesValides = $this->contactType === 'client'
+                ? 'std_nr,rp,ko'
+                : 'nrp,fax,supp,maj,rdv,cse_ni,rapl_elu,rapl_std,bloc,bloc2,ncse_50,ncse_plus50,cse_zone,cse_hz';
+        }
 
         $this->validate([
-            'statut_resultat' => $statutsValides,
-            'commentaires'    => 'nullable|string|max:2000',
+            'statut_resultat'  => 'required|in:' . $codesValides,
+            'commentaires'     => 'nullable|string|max:2000',
+            'interlocuteur_email'       => 'nullable|email',
+            'email_general_standard'    => 'nullable|email',
         ]);
 
         match ($this->contactType) {
@@ -421,26 +475,14 @@ class PhoningWorkflow extends Page
 
     protected function updatePartenaire(): void
     {
-        $note = "[Appel du " . now()->format('d/m/Y H:i') . "] ";
-        $note .= match ($this->statut_resultat) {
-            'std_joint', 'rp', 'rpc' => "✅ Contact joint",
-            'std_nr', 'cse_nr'        => "❌ Non joignable",
-            'ko'                      => "🚫 Refus / KO",
-            default                   => "Appel effectué",
-        };
+        $note = "[Appel du " . now()->format('d/m/Y H:i') . "] " . $this->getResultLabel();
         if ($this->commentaires) $note .= "\n{$this->commentaires}";
         $this->currentContact->ajouterNote($note);
     }
 
     protected function updateParticulier(): void
     {
-        $note = "[Appel du " . now()->format('d/m/Y H:i') . "] ";
-        $note .= match ($this->statut_resultat) {
-            'std_joint', 'rp', 'rpc' => "✅ Joint",
-            'std_nr', 'cse_nr'        => "❌ Non joignable",
-            'ko'                      => "🚫 K.O",
-            default                   => "Appel",
-        };
+        $note = "[Appel du " . now()->format('d/m/Y H:i') . "] " . $this->getResultLabel();
         if ($this->commentaires) $note .= " - {$this->commentaires}";
         $this->currentContact->update([
             'notes' => ($this->currentContact->notes ? $this->currentContact->notes . "\n" : '') . $note,
@@ -449,13 +491,7 @@ class PhoningWorkflow extends Page
 
     protected function updateClient(): void
     {
-        $note = "[Appel du " . now()->format('d/m/Y H:i') . "] ";
-        $note .= match ($this->statut_resultat) {
-            'std_joint', 'rp', 'rpc' => "✅ Joint",
-            'std_nr', 'cse_nr'        => "❌ Non joignable",
-            'ko'                      => "🚫 KO",
-            default                   => "Appel effectué",
-        };
+        $note = "[Appel du " . now()->format('d/m/Y H:i') . "] " . $this->getResultLabel();
         if ($this->commentaires) $note .= " — {$this->commentaires}";
         // Stocké dans extra_data car Client n'a pas de champ notes dédié
         $extra = $this->currentContact->extra_data ?? [];
@@ -466,25 +502,60 @@ class PhoningWorkflow extends Page
     protected function updateProspect(): void
     {
         $prospect = $this->currentContact;
+
+        // Mapping 14 statuts CSE → ProspectStatut
         $nouveauStatut = match ($this->statut_resultat) {
-            'rp'        => ProspectStatut::RP,
-            'rpc'       => ProspectStatut::RPC,
-            'std_joint' => ProspectStatut::STD_Joint,
-            'std_nr'    => ProspectStatut::STD_NR,
-            'cse_nr'    => ProspectStatut::CSE_NR,
-            'ko'        => ProspectStatut::KO,
-            default     => ProspectStatut::AC,
+            // Cas 2 : Élu joint
+            'rdv'         => ProspectStatut::RPC,
+            'cse_ni'      => ProspectStatut::RP,
+            'rapl_elu'    => ProspectStatut::RP,
+            // Cas 3 : Blocage standard
+            'rapl_std'    => ProspectStatut::STD_Joint,
+            'bloc'        => ProspectStatut::STD_Joint,
+            'bloc2'       => ProspectStatut::CSE_NR,
+            // Cas 4 : Pas de CSE
+            'ncse_50'     => ProspectStatut::CSE_NR,
+            'ncse_plus50' => ProspectStatut::STD_Joint,
+            // Cas particulier : CSE centralisé
+            'cse_zone'    => ProspectStatut::STD_Joint,
+            'cse_hz'      => ProspectStatut::KO,
+            // Cas 1 : Appel non abouti
+            'nrp'         => ProspectStatut::STD_NR,
+            'fax'         => ProspectStatut::STD_NR,
+            'maj'         => ProspectStatut::AC,
+            'supp'        => ProspectStatut::KO,
+            // Anciens codes (rétrocompatibilité)
+            'rp'          => ProspectStatut::RP,
+            'rpc'         => ProspectStatut::RPC,
+            'std_joint'   => ProspectStatut::STD_Joint,
+            'std_nr'      => ProspectStatut::STD_NR,
+            'cse_nr'      => ProspectStatut::CSE_NR,
+            'ko'          => ProspectStatut::KO,
+            default       => ProspectStatut::AC,
         };
-        $note = match ($this->statut_resultat) {
-            'rp'        => "✅ Réponse positive",
-            'rpc'       => "✅ Réponse positive CSE",
-            'std_joint' => "📞 Standard joint",
-            'std_nr'    => "❌ Standard non référencé",
-            'cse_nr'    => "❌ CSE non référencé",
-            'ko'        => "🚫 KO - Refus",
-            default     => "Appel effectué",
-        };
+
+        $note = $this->getResultLabel();
         if ($this->commentaires) $note .= " — {$this->commentaires}";
+
+        // Persist interlocutor & standard fields collected during the call
+        $updateData = [];
+        if ($this->nom_interlocuteur_standard !== '')
+            $updateData['nom_interlocuteur_standard'] = $this->nom_interlocuteur_standard;
+        if ($this->creneaux_permanence_cse !== '')
+            $updateData['creneaux_permanence_cse'] = $this->creneaux_permanence_cse;
+        if ($this->email_general_standard !== '')
+            $updateData['email_general_standard'] = $this->email_general_standard;
+        if ($this->interlocuteur_nom !== '')
+            $updateData['interlocuteur_nom'] = $this->interlocuteur_nom;
+        if ($this->interlocuteur_fonction !== '')
+            $updateData['interlocuteur_fonction'] = $this->interlocuteur_fonction;
+        if ($this->interlocuteur_telephone !== '')
+            $updateData['interlocuteur_telephone'] = $this->interlocuteur_telephone;
+        if ($this->interlocuteur_email !== '')
+            $updateData['interlocuteur_email'] = $this->interlocuteur_email;
+        if (! empty($updateData)) {
+            $prospect->update($updateData);
+        }
 
         if ($nouveauStatut === ProspectStatut::KO) {
             $prospect->marquerKO($note);
@@ -493,7 +564,9 @@ class PhoningWorkflow extends Page
         }
         $prospect->marquerContact();
 
-        if (in_array($this->statut_resultat, ['rp', 'rpc']) && $this->rappel_date) {
+        // Planifier le rappel pour les codes qui génèrent une fiche ou un créneau
+        $codesRappel = ['rdv', 'rapl_elu', 'rapl_std', 'cse_ni', 'rp', 'rpc'];
+        if (in_array($this->statut_resultat, $codesRappel) && $this->rappel_date) {
             try {
                 $fmt = 'Y-m-d' . ($this->rappel_heure ? ' H:i' : '');
                 $val = $this->rappel_date . ($this->rappel_heure ? ' ' . $this->rappel_heure : '');
@@ -504,17 +577,78 @@ class PhoningWorkflow extends Page
         }
     }
 
+    // ── Fiches récap ──────────────────────────────────────────────────
+    protected function determineFicheType(): ?string
+    {
+        return match ($this->statut_resultat) {
+            'rdv'                                          => 'bleue',
+            'cse_ni'                                       => 'jaune',
+            'bloc2', 'ncse_50', 'ncse_plus50', 'cse_zone' => 'verte',
+            default                                        => null,
+        };
+    }
+
+    protected function buildFicheData(string $ficheType): array
+    {
+        $info = $this->currentContactData;
+        $prospect = $this->currentContact;
+
+        $base = [
+            'raison_sociale'          => $info['nom'] ?? null,
+            'secteur_activite'        => $info['secteur_activite'] ?? null,
+            'effectif_total'          => $info['nb_salaries'] ?? null,
+            'adresse'                 => $info['adresse_complete'] ?? null,
+            'interlocuteur_nom'       => $this->interlocuteur_nom ?: ($info['interlocuteur_nom'] ?? null),
+            'interlocuteur_fonction'  => $this->interlocuteur_fonction ?: ($info['interlocuteur_fonction'] ?? null),
+            'interlocuteur_telephone' => $this->interlocuteur_telephone ?: ($info['interlocuteur_telephone'] ?? null),
+            'interlocuteur_email'     => $this->interlocuteur_email ?: ($info['interlocuteur_email'] ?? null),
+            'teleprospecteur_id'      => Auth::id(),
+            'commercial_id'           => $prospect?->commercial_id ?? null,
+            'date_appel'              => now()->format('d/m/Y'),
+        ];
+
+        return match ($ficheType) {
+            'bleue' => array_merge($base, [
+                'date_rdv'                   => $this->rappel_date ?: null,
+                'heure_rdv'                  => $this->rappel_heure ?: null,
+                'lieu_rdv'                   => $this->lieu_rdv ?: null,
+                'invitation_agenda_envoyee'  => $this->invitation_agenda_envoyee,
+                'enregistrement_appel_joint' => $this->enregistrement_appel_joint,
+                'enregistrement_raison'      => $this->enregistrement_raison ?: null,
+                'besoins_exprimes'           => $this->besoins_exprimes ?: null,
+                'objections_soulevees'       => $this->objections_soulevees ?: null,
+                'points_attention_rdv'       => $this->points_attention_rdv ?: null,
+                'notes_interlocuteur'        => $this->commentaires ?: null,
+            ]),
+            'jaune' => array_merge($base, [
+                'commentaires' => $this->commentaires ?: null,
+                'date_rappel'  => $this->rappel_date ?: now()->addDays(7)->format('Y-m-d'),
+                'heure_rappel' => $this->rappel_heure ?: null,
+            ]),
+            'verte' => array_merge($base, [
+                'presence_cse'       => $this->presence_cse ?: null,
+                'jour_dispo_appel'   => $this->jour_dispo_appel ?: null,
+                'commentaires'       => $this->commentaires ?: null,
+                'date_rdv_a_prendre' => $this->rappel_date ?: null,
+                'heure_rdv_a_prendre'=> $this->rappel_heure ?: null,
+            ]),
+            default => [],
+        };
+    }
+
     // ── Journal d'appel ───────────────────────────────────────────────
     protected function enregistrerAppel(): void
     {
         if (! $this->currentContact) return;
 
         $eventResult = match ($this->statut_resultat) {
-            'std_nr', 'cse_nr' => EventResult::NonAbouti,
-            'ko'               => EventResult::Annule,
-            'rp'               => EventResult::Rappel,
-            default            => EventResult::Realise,
+            'nrp', 'fax', 'std_nr', 'cse_nr'       => EventResult::NonAbouti,
+            'supp', 'cse_hz', 'ko'                  => EventResult::Annule,
+            'rdv', 'rapl_elu', 'rapl_std', 'rp'     => EventResult::Rappel,
+            default                                  => EventResult::Realise,
         };
+
+        $ficheType = $this->determineFicheType();
 
         Appel::create([
             'appelable_type'       => get_class($this->currentContact),
@@ -530,6 +664,8 @@ class PhoningWorkflow extends Page
             'phoning_completed_at' => now(),
             'phoning_agent_id'     => Auth::id(),
             'campagne_id'          => $this->currentCampagneId,
+            'fiche_type'           => $ficheType,
+            'fiche_data'           => $ficheType ? $this->buildFicheData($ficheType) : null,
         ]);
     }
 
@@ -566,15 +702,15 @@ class PhoningWorkflow extends Page
 
     protected function getResultLabel(): string
     {
-        return match ($this->statut_resultat) {
-            'std_nr'    => '❌ STD-NR',
-            'std_joint' => '📞 STD-Joint',
-            'cse_nr'    => '🟠 CSE-NR',
-            'rp'        => '✅ RP – Rappel planifié',
-            'rpc'       => '⭐ RPC – RDV à planifier',
-            'ko'        => '🚫 KO',
-            default     => $this->statut_resultat,
-        };
+        $statut = StatutPhoning::where('model_type', $this->contactType)
+            ->where('code', $this->statut_resultat)
+            ->first();
+
+        if ($statut) {
+            return trim("{$statut->icone} {$statut->label}");
+        }
+
+        return $this->statut_resultat;
     }
 
     // ── Données pour la vue ───────────────────────────────────────────
@@ -597,6 +733,21 @@ class PhoningWorkflow extends Page
     public function getContactInfo(): array
     {
         return $this->currentContactData;
+    }
+
+    public function getStatutsPhoning(): array
+    {
+        $type = $this->contactType ?: 'prospect';
+        return StatutPhoning::forModelType($type)
+            ->map(fn($s) => [
+                'value'   => $s->code,
+                'label'   => $s->label,
+                'sub'     => $s->description,
+                'couleur' => $s->couleur,
+                'bar'     => $s->couleur_css,
+                'icon'    => $s->icone,
+            ])
+            ->toArray();
     }
 
     protected function getHeaderActions(): array
