@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             FixAlexSeeder::class,
             AlloproUsersSeeder::class,
             ArtisanSeeder::class,
+            StatutPhoningSeeder::class
         ]);
     }
 }

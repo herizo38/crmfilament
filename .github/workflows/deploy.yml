@@ -64,6 +64,9 @@ jobs:
             echo "==> Running database migrations..."
             php artisan migrate --force
 
+            echo "==> Running database seeders..."
+            php artisan db:seed --force
+
             echo "==> Clearing & rebuilding caches..."
             php artisan optimize:clear
             php artisan config:cache
