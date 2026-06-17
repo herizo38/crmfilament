@@ -1,4 +1,5 @@
 <?php
+
 namespace Database\Seeders;
 
 use App\Models\Artisan;
@@ -73,11 +74,20 @@ class ArtisanSeeder extends Seeder
         ];
 
         foreach ($artisans as $a) {
-            $artisan = Artisan::create($a);
-            // ✅ Correction ici : utiliser $artisan->corps_de_metier->label() ou ->value
-            $this->command->line("  ✓ Artisan: {$artisan->prenom} {$artisan->nom} (" . $artisan->corps_de_metier->label() . ")");
+            // 🔄 Utilisation de updateOrCreate pour éviter de casser la production
+            $artisan = Artisan::updateOrCreate(
+                ['siret' => $a['siret']], // Le critère d'identification unique
+                $a                        // Les données à insérer ou mettre à jour
+            );
+
+            // Gestion sécurisée de l'affichage du label de l'enum
+            $label = method_exists($artisan->corps_de_metier, 'label')
+                ? $artisan->corps_de_metier->label()
+                : $artisan->corps_de_metier->value;
+
+            $this->command->line("  ✓ Artisan: {$artisan->prenom} {$artisan->nom} ({$label})");
         }
 
-        $this->command->info('✅ ' . count($artisans) . ' artisans créés');
+        $this->command->info('✅ ' . count($artisans) . ' artisans synchronisés');
     }
 }
