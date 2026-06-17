@@ -5,8 +5,8 @@ namespace App\Filament\NsConseil\Resources\OpportuniteResource\Pages;
 use App\Filament\NsConseil\Resources\OpportuniteResource;
 use App\Models\Opportunite;
 use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Components\Tab;
+use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListOpportunites extends ListRecords
@@ -40,6 +40,11 @@ class ListOpportunites extends ListRecords
                 ->modifyQueryUsing(fn (Builder $q) => $q->where('statut', 'en_negociation'))
                 ->badge(Opportunite::where('statut', 'en_negociation')->count())
                 ->badgeColor('purple'),
+
+            'qualifiee' => Tab::make('Qualifiées')
+                ->modifyQueryUsing(fn (Builder $q) => $q->where('statut', 'qualifiee'))
+                ->badge(Opportunite::where('statut', 'qualifiee')->count())
+                ->badgeColor('primary'),
 
             'converties' => Tab::make('Converties')
                 ->modifyQueryUsing(fn (Builder $q) => $q->where('statut', 'converti'))

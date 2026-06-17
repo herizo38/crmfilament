@@ -148,6 +148,26 @@ class Partenaire extends Model
         return $this->nom . ' (' . $this->type->value . ')';
     }
 
+    /**
+     * Nomenclature imposée par le CDC : « [Type] [Entreprise] [Ville] ».
+     */
+    public static function genererNomenclature($type, ?string $entreprise, ?string $ville): string
+    {
+        $typeLabel = $type instanceof OrganizationType
+            ? $type->value
+            : (OrganizationType::tryFrom((string) $type)?->value ?? (string) $type);
+
+        return collect([$typeLabel, $entreprise, $ville])
+            ->filter(fn($part) => filled($part))
+            ->map(fn($part) => trim((string) $part))
+            ->implode(' ');
+    }
+
+    public function getNomenclatureSuggereeAttribute(): string
+    {
+        return self::genererNomenclature($this->type, $this->entreprise, $this->ville);
+    }
+
     public function getAdresseCompleteAttribute(): string
     {
         return trim($this->adresse . ', ' . $this->code_postal . ' ' . $this->ville);

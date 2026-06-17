@@ -11,6 +11,7 @@ use App\Models\Partenaire;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
@@ -47,6 +48,24 @@ class PartenaireResource extends Resource
                 ->schema([
                     Forms\Components\TextInput::make('nom')
                         ->label('Nom légal')->required()->maxLength(255)->columnSpan(2),
+                    Forms\Components\TextInput::make('entreprise')
+                        ->label('Entreprise')->maxLength(255)
+                        ->helperText('Raison sociale — utilisée pour la nomenclature')
+                        ->live(onBlur: true),
+                    Forms\Components\TextInput::make('nom_retenu')
+                        ->label('Nom retenu (nomenclature)')
+                        ->maxLength(255)
+                        ->columnSpan(2)
+                        ->helperText('Nomenclature imposée : [Type] [Entreprise] [Ville]')
+                        ->hintAction(
+                            Forms\Components\Actions\Action::make('genererNomenclature')
+                                ->label('Générer')
+                                ->icon('heroicon-m-sparkles')
+                                ->action(fn (Get $get, Set $set) => $set(
+                                    'nom_retenu',
+                                    Partenaire::genererNomenclature($get('type'), $get('entreprise'), $get('ville'))
+                                ))
+                        ),
                     Forms\Components\TextInput::make('siret')
                         ->label('SIRET')->maxLength(14)->minLength(14)
                         ->placeholder('14 chiffres exactement')

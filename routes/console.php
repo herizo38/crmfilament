@@ -12,3 +12,8 @@ Schedule::command('aircall:sync --pages=2 --per-page=50')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+// CDC WF5 / WF6 : rapport hebdomadaire (lundi 07h30).
+Schedule::command('crm:weekly-report')
+    ->weeklyOn(1, '07:30')
+    ->withoutOverlapping();

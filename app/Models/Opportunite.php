@@ -47,12 +47,14 @@ class Opportunite extends Model
     ];
 
     // ── Constantes ──────────────────────────────────────────────────
+    // Statuts alignés sur le CDC §4.3 (Nouveau / En cours d'évaluation / Qualifiée / Converti / Perdue).
     const STATUTS = [
         'nouveau' => 'Nouveau',
-        'en_qualification' => 'En qualification',
+        'en_qualification' => "En cours d'évaluation",
         'contacte' => 'Contacté',
         'rdv_planifie' => 'RDV planifié',
         'en_negociation' => 'En négociation',
+        'qualifiee' => 'Qualifiée',
         'converti' => 'Converti',
         'perdu' => 'Perdu',
     ];
@@ -64,14 +66,15 @@ class Opportunite extends Model
         'tres_eleve' => 'Très élevé',
     ];
 
+    // Sources de détection alignées sur le CDC §4.3.
     const SOURCES = [
-        'salon' => 'Salon professionnel',
-        'recommandation' => 'Recommandation',
-        'site_web' => 'Site web',
+        'reseau_commercial' => 'Réseau commercial',
+        'client_existant' => 'Client existant',
+        'parrainage' => 'Parrainage',
+        'phoning_entrant' => 'Phoning entrant',
+        'salon' => 'Salon',
         'linkedin' => 'LinkedIn',
-        'prospection_telephonique' => 'Prospection téléphonique',
-        'emailing' => 'Emailing',
-        'partenaire' => 'Partenaire',
+        'fichier_externe' => 'Fichier externe',
         'autre' => 'Autre',
     ];
 
@@ -89,6 +92,7 @@ class Opportunite extends Model
             'contacte' => 'primary',
             'rdv_planifie' => 'orange',
             'en_negociation' => 'purple',
+            'qualifiee' => 'primary',
             'converti' => 'success',
             'perdu' => 'danger',
             default => 'gray',
@@ -135,7 +139,7 @@ class Opportunite extends Model
 
     public function getEstConvertibleAttribute(): bool
     {
-        return in_array($this->statut, ['en_negociation', 'rdv_planifie']);
+        return in_array($this->statut, ['qualifiee', 'en_negociation', 'rdv_planifie']);
     }
 
     public function getInterlocuteurCompletAttribute(): string
@@ -176,6 +180,11 @@ class Opportunite extends Model
     public function demarrerNegociation(): void
     {
         $this->update(['statut' => 'en_negociation']);
+    }
+
+    public function marquerQualifiee(): void
+    {
+        $this->update(['statut' => 'qualifiee']);
     }
 
     public function convertirEnProspect(): ?Prospect
@@ -350,7 +359,7 @@ class Opportunite extends Model
     public static function getValeurPipeline(): float
     {
         return static::whereIn('statut', [
-            'en_qualification', 'contacte', 'rdv_planifie', 'en_negociation'
+            'en_qualification', 'contacte', 'rdv_planifie', 'en_negociation', 'qualifiee'
         ])->get()->sum(function ($opp) {
             return $opp->valeur_estimee;
         });

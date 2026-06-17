@@ -195,6 +195,7 @@ class OpportuniteResource extends Resource
                         'contacte' => 'primary',
                         'rdv_planifie' => 'orange',
                         'en_negociation' => 'purple',
+                        'qualifiee' => 'primary',
                         'converti' => 'success',
                         'perdu' => 'danger',
                         default => 'gray',
@@ -260,12 +261,29 @@ class OpportuniteResource extends Resource
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
 
+                // Qualifier (CDC §4.3 : pré-requis à la conversion)
+                Tables\Actions\Action::make('qualifier')
+                    ->label('Qualifier')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('primary')
+                    ->visible(fn(Opportunite $record) => !in_array($record->statut, ['qualifiee', 'converti', 'perdu']))
+                    ->action(function (Opportunite $record) {
+                        $record->marquerQualifiee();
+                        Notification::make()
+                            ->title('Opportunité qualifiée ✓')
+                            ->success()
+                            ->send();
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('Qualifier l\'opportunité')
+                    ->modalDescription('L\'opportunité passe au statut « Qualifiée » et devient convertible en prospect.'),
+
                 // Convertir en prospect
                 Tables\Actions\Action::make('convertir')
                     ->label('→ Prospect')
                     ->icon('heroicon-o-arrow-right-circle')
                     ->color('success')
-                    ->visible(fn(Opportunite $record) => $record->statut !== 'converti')
+                    ->visible(fn(Opportunite $record) => $record->est_convertible)
                     ->action(function (Opportunite $record) {
                         $record->convertirEnProspect();
                         Notification::make()

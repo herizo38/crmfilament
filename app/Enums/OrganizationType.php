@@ -8,18 +8,16 @@ enum OrganizationType: string
     case Syndicat = 'Syndicat';
     case EntrepriseDirecte = 'Entreprise directe';
     case Association = 'Association';
+    case PartenariatAnnule = 'Partenariat annulé';
 
     /**
      * Retourne un tableau pour les selects Filament
      */
     public static function pourSelect(): array
     {
-        return [
-            self::CSE->value => self::CSE->value,
-            self::Syndicat->value => self::Syndicat->value,
-            self::EntrepriseDirecte->value => self::EntrepriseDirecte->value,
-            self::Association->value => self::Association->value,
-        ];
+        return collect(self::cases())
+            ->mapWithKeys(fn($case) => [$case->value => $case->label()])
+            ->toArray();
     }
 
     /**
@@ -32,6 +30,7 @@ enum OrganizationType: string
             self::Syndicat => 'Syndicat',
             self::EntrepriseDirecte => 'Entreprise directe',
             self::Association => 'Association',
+            self::PartenariatAnnule => 'Partenariat annulé',
         };
     }
 }
